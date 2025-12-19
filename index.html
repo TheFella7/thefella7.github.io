@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="description" content="ShroomsBloomIdle - The ultimate fungal idle experience.">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
-    <title>🍄 Shrooms Bloom Idle 🍄</title>
+    <title>🍄 ShroomsBloomIdle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body{margin:0;font-family:system-ui, -apple-system, sans-serif;background:radial-gradient(circle at top,#1a002f,#000);color:#fff;text-align:center;overflow-x:hidden; touch-action: manipulation; user-select: none;}
@@ -44,31 +45,46 @@
         .chat-input-area { display: flex; gap: 8px; }
         
         #chatInput { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ff00ff; background: #000; color: #fff; font-size: 0.85em; outline: none; }
-        #usernameOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 5000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        
+        /* Fixed: Username overlay hidden by default to prevent flicker */
+        #usernameOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 5000; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        
         .nameInput { padding: 15px; border-radius: 10px; border: 2px solid #ff00ff; background: #111; color: #fff; font-size: 1.2em; text-align: center; margin-bottom: 20px; width: 80%; }
         .lb-row { display: grid; grid-template-columns: 50px 1fr 1fr; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.85em; }
+        
+        .ad-slot-main { margin: 20px auto; max-width: 420px; min-height: 90px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.7em; color: #444; }
         footer { padding: 40px 20px; opacity: 0.6; font-size: 0.8em; }
     </style>
 </head>
 <body onload="initGame()">
 
 <div id="usernameOverlay">
-    <h1 style="color:#ff00ff; text-shadow: 0 0 20px #ff00ff;">SHROOM ASCENSION</h1>
+    <h1 style="color:#ff00ff; text-shadow: 0 0 20px #ff00ff;">🍄 ShroomsBloomIdle 🍄</h1>
     <input type="text" id="playerNameInput" class="nameInput" maxlength="15" placeholder="Enter Name...">
     <button style="padding: 15px 30px; background: #ff00ff; color:#fff; border-radius: 10px; border:none; font-weight:bold; cursor:pointer; box-shadow: 0 0 15px #ff00ff;" onclick="confirmUsername()">Begin Journey</button>
 </div>
 
 <div id="topBar">
     <div id="title">🍄 Shrooms Bloom Idle 🍄</div>
-    <div id="displayUsername" style="color: #00ffff; font-size:0.85em; font-weight: bold;">Syncing...</div>
+    <div id="displayUsername" style="color: #00ffff; font-size:0.85em; font-weight: bold;">Connecting...</div>
     <div id="dateTimeDisplay"></div>
-    <div id="saveStatus">AUTO-SAVING...</div>
+    <div id="saveStatus">SAVED</div>
     <div class="control-btns">
         <button class="mini-btn" onclick="saveGame(true)">SAVE DATA</button>
     </div>
 </div>
 
 <div id="gameContainer">
+    <div class="ad-slot-main">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-8763574694147463"
+             data-ad-slot="9876543210" 
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
     <div id="frenzyStatus" style="margin-top:10px; font-weight:bold; font-size:0.9em; color:#ff8c00;">READY TO FRENZY</div>
     <div class="bar"><div id="frenzyFill" class="frenzyBar"></div></div>
 
@@ -94,9 +110,11 @@
             <button id="buyMushroomBtn" class="upgrade-main" onclick="buyMushroom(false)">Buy Mushroom</button>
             <button class="max-btn" id="max-btn-mushrooms" onclick="buyMushroom(true)">BUY MAX</button>
         </div>
+        
         <div class="btn-group">
             <div class="afford-tag" id="tag-ascend">0</div>
-            <button id="ascendBtn" class="upgrade-main" onclick="ascend()">Ascend</button>
+            <button id="ascendBtn" class="upgrade-main" onclick="ascend(false)">Ascend</button>
+            <button class="max-btn" id="max-btn-ascend" onclick="ascend(true)">BUY MAX</button>
         </div>
     </div>
 
@@ -187,7 +205,6 @@ function clickMushroom(event) {
 function buyUpgrade(id, isMax = false) {
     let u = upgrades[id];
     let currentCost = u.base * Math.pow(u.growth, u.qty);
-    
     if (isMax) {
         let count = Math.floor(Math.log((spores * (u.growth - 1) / currentCost) + 1) / Math.log(u.growth));
         if (count > 0) {
@@ -215,13 +232,23 @@ function buyMushroom(isMax = false) {
     updateUI();
 }
 
-function ascend() {
-    let aCost = 50 * Math.pow(1.08, ascensionTimes);
-    if (mushrooms >= aCost) {
+function ascend(isMax = false) {
+    const base = 50, grow = 1.08;
+    let currentCost = base * Math.pow(grow, ascensionTimes);
+    
+    if (isMax) {
+        let count = Math.floor(Math.log((mushrooms * (grow - 1) / currentCost) + 1) / Math.log(grow));
+        if (count > 0) {
+            ascensionTimes += count; spores = 0; mushrooms = 0;
+            for (let k in upgrades) upgrades[k].qty = 0;
+            saveGame(true);
+        }
+    } else if (mushrooms >= currentCost) {
         ascensionTimes++; spores = 0; mushrooms = 0;
         for (let k in upgrades) upgrades[k].qty = 0;
-        saveGame(true); updateUI();
+        saveGame(true);
     }
+    updateUI();
 }
 
 function updateUI() {
@@ -287,24 +314,35 @@ async function sendChatMessage() {
 }
 
 async function loadLeaderboard() {
-    const { data } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10);
-    if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>#${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span></div>`).join('');
+    try {
+        const { data } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10);
+        if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>#${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span></div>`).join('');
+    } catch(e) { console.warn("Leaderboard sync failed - check connection or adblock."); }
 }
 
-function saveGame(show) {
+async function saveGame(show) {
     if (!pName) return;
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}), frenzyCooldown, frenzyTimer, isFrenzyActive, lastSave: Date.now() };
     localStorage.setItem("shroom_save_final_v3", JSON.stringify(d));
-    supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes }, { onConflict: 'username' });
-    if(show) { const ss = document.getElementById('saveStatus'); ss.style.opacity = "1"; setTimeout(() => ss.style.opacity = "0", 2000); }
+    
+    try {
+        await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes }, { onConflict: 'username' });
+        loadLeaderboard(); // Live track update
+    } catch(e) {}
+
+    if(show) { 
+        const ss = document.getElementById('saveStatus'); 
+        ss.textContent = "AUTO-SAVING...";
+        ss.style.opacity = "1"; 
+        setTimeout(() => { ss.style.opacity = "0"; ss.textContent = "SAVED"; }, 2000); 
+    }
 }
 
 function hardReset() { 
     if(confirm("Wipe all progress? Premium boosts will remain active.")) { 
         let boost = premiumBoostAdd;
+        let name = pName;
         localStorage.removeItem("shroom_save_final_v3"); 
-        // We re-save just the boost after wipe
-        premiumBoostAdd = boost;
         location.reload(); 
     } 
 }
@@ -321,9 +359,10 @@ function initGame() {
         isFrenzyActive = saved.isFrenzyActive || false; frenzyTimer = saved.frenzyTimer || 0; frenzyCooldown = saved.frenzyCooldown || 0;
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0;
         let off = (Date.now() - (saved.lastSave || Date.now())) / 1000; 
-        spores += getSPS() * Math.min(off, 86400); // Max 24h offline
+        spores += getSPS() * Math.min(off, 86400); 
     }
     
+    // Logic: Only show overlay if name is missing
     if (pName) { 
         document.getElementById('usernameOverlay').style.display = 'none'; 
         document.getElementById('displayUsername').textContent = "Shroomer: " + pName; 
@@ -344,8 +383,11 @@ function initGame() {
         if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 1800; document.getElementById('mushroomClicker').className = "shroom-normal"; } }
         else if (frenzyCooldown > 0) frenzyCooldown -= dt;
         spores += (getSPS() * dt); autoSaveCounter += dt;
-        if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; loadLeaderboard(); }
-        updateUI(); document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
+        
+        if (autoSaveCounter >= 10) { saveGame(false); autoSaveCounter = 0; }
+        
+        updateUI(); 
+        document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
     }, 100);
 }
 
