@@ -30,7 +30,7 @@
         .frenzyBar{background:linear-gradient(90deg, #ff0000, #ff8c00); width: 0%; height: 100%; transition: width 0.1s linear;}
         .card{background:rgba(255,255,255,0.05);border-radius:16px;padding:15px;margin:15px auto;max-width:420px;border:1px solid rgba(255,0,255,0.2); position: relative;}
         .stat-row { display: flex; justify-content: space-between; padding: 4px 10px; font-size: 0.9em; }
-        #chatContainer { height: 180px; overflow-y: auto; text-align: left; font-size: 0.8em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; scroll-behavior: smooth;}
+        #chatContainer { height: 180px; overflow-y: auto; text-align: left; font-size: 0.8em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; scroll-behavior: auto;}
         .chat-msg { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 3px; word-wrap: break-word; }
         .chat-user { color: #00ffff; font-weight: bold; margin-right: 5px; }
         .chat-input-area { display: flex; gap: 8px; }
@@ -246,22 +246,22 @@ function filterText(text) {
 }
 async function fetchChat() {
     try {
-        const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(50);
+        const { data, error } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(40);
         if (data) {
             const container = document.getElementById('chatContainer');
-            const isBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 20;
+            const isBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
             container.innerHTML = data.reverse().map(m => `<div class="chat-msg"><span class="chat-user">${m.username}:</span> ${filterText(m.message)}</div>`).join('');
             if (isBottom) container.scrollTop = container.scrollHeight;
         }
-    } catch(e) {}
+    } catch(e) { console.error("Chat Fetch Error:", e); }
 }
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
     let msg = input.value.trim();
     if (msg && pName) {
-        await supabaseClient.from('chat').insert({ username: pName, message: filterText(msg) });
+        const { error } = await supabaseClient.from('chat').insert({ username: pName, message: filterText(msg) });
+        if(error) { console.error("SEND ERROR:", error.message); alert("Error sending: " + error.message); }
         input.value = ""; fetchChat();
-        setTimeout(() => { const c = document.getElementById('chatContainer'); c.scrollTop = c.scrollHeight; }, 100);
     }
 }
 async function loadLeaderboard() {
@@ -289,7 +289,7 @@ function initGame() {
     }
     if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
     else { document.getElementById('usernameOverlay').style.display = 'flex'; }
-    loadLeaderboard(); fetchChat(); setInterval(fetchChat, 5000);
+    loadLeaderboard(); fetchChat(); setInterval(fetchChat, 4000);
     paypal.Buttons({ style: { shape: 'pill', color: 'gold', height: 40 }, createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) }).render('#paypal-button-container');
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
