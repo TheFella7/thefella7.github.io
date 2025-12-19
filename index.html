@@ -10,42 +10,34 @@
     <style>
         :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; user-select: none; }
-        
         #topBar { padding: 10px; position: sticky; top: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 2px solid var(--neon); }
         #title { font-size: 1.4em; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); margin: 0; }
         #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 15px; }
-
         .bar-wrapper { width: 90%; margin: 10px auto; }
         .bar-text { font-size: 0.8em; font-weight: bold; margin-bottom: 4px; display: block; }
         .full-bar { height: 16px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; position: relative; }
         .xp-fill { background: linear-gradient(90deg, #00bb00, #39ff14); width: 0%; height: 100%; transition: width 0.3s; box-shadow: 0 0 15px var(--xp); }
         .frenzy-fill { background: linear-gradient(90deg, #ff0000, #ff8c00); width: 0%; height: 100%; transition: width 0.1s linear; }
-
         #mushroomClicker { font-size: 110px; cursor: pointer; margin: 15px 0; display: inline-block; transition: transform 0.05s; z-index: 10; position: relative; }
         .shroom-normal { animation: pulse 3s infinite ease-in-out; }
         .shroom-click { transform: scale(0.85) !important; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .shroom-frenzy { animation: frenzyShake 0.1s infinite !important; filter: drop-shadow(0 0 30px #ff0000) hue-rotate(320deg) !important; }
-
         .spore-display { font-size: 2.5em; color: var(--gold); font-weight: 800; text-shadow: 0 0 15px rgba(255,215,0,0.3); margin: 10px 0; }
         .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); }
         .stat-row { display: flex; justify-content: space-between; padding: 5px 10px; font-size: 0.9em; }
-
         .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
         .btn-group { display: flex; flex-direction: column; position: relative; }
         button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); }
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; color: #000; cursor: pointer; }
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
-
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
         .lb-row { display: grid; grid-template-columns: 25px 2fr 1.2fr 0.8fr 0.8fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.75em; align-items: center; }
-        
         button:disabled { opacity: 0.3; filter: grayscale(1); }
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
-        
-        .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
+        .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
     </style>
 </head>
 <body onload="initGame()">
@@ -68,19 +60,14 @@
         <span class="bar-text" style="color:var(--xp)">Level <span id="lvlUI">1</span> (<span id="xpPct">0</span>%)</span>
         <div class="full-bar"><div id="xpFill" class="xp-fill"></div></div>
     </div>
-
     <div class="bar-wrapper">
         <span id="frenzyStatus" class="bar-text" style="color:#ff8c00">READY TO FRENZY</span>
         <div class="full-bar"><div id="frenzyFill" class="frenzy-fill"></div></div>
     </div>
-
     <div id="mushroomClicker" class="shroom-normal" onclick="clickMushroom(event)">🍄</div>
-    
     <div class="spore-display"><span id="spores">0</span></div>
     <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px; color:var(--cyan);">Spores Per Second: <span id="rate">0</span></div>
-
     <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE PROGRESS</button>
-
     <div class="card">
         <div class="stat-row"><span>Total Mushrooms:</span> <b id="mushroomsUI">0</b></div>
         <div class="stat-row"><span>Total Ascensions:</span> <b id="ascCountUI">0</b></div>
@@ -88,9 +75,7 @@
             <span>Total Multiplier:</span> <b id="totalMultUI">x1.00</b>
         </div>
     </div>
-
     <div id="upgradeContainer" class="upgrade-grid"></div>
-
     <div class="upgrade-grid">
         <div class="btn-group">
             <div class="afford-tag" id="tag-mushrooms">+0</div>
@@ -103,7 +88,6 @@
             <button class="max-btn" onclick="ascend(true)">BUY MAX</button>
         </div>
     </div>
-
     <div class="card" style="border-color: var(--cyan);">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan); font-size:0.8em; text-transform:uppercase;">Global Spore-Chat</p>
         <div id="chatContainer"></div>
@@ -112,12 +96,10 @@
             <button onclick="sendChatMessage()" style="padding: 0 15px; border-radius: 8px; background: var(--neon); color: #fff; border: none; font-weight:bold;">Send</button>
         </div>
     </div>
-
     <div class="card" style="border-color: #ff69b4;">
         <div id="paypal-button-container"></div>
         <p style="font-size:0.75em; margin-top:10px; color: #ff69b4;">x20 Permanent Multiplier For (£1.69)</p>
     </div>
-
     <div class="card">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS (LIVE)</p>
         <div class="lb-row" style="font-weight:bold; color:var(--gold); border-bottom:1px solid #444;">
@@ -125,12 +107,10 @@
         </div>
         <div id="leaderboardList">Syncing scores...</div>
     </div>
-
     <div class="ad-slot-bottom" style="margin-top:20px;">
         <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-8763574694147463" data-ad-slot="9876543210" data-ad-format="auto" data-full-width-responsive="true"></ins>
         <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
-
     <button onclick="hardReset()" style="background: #220000; color: #ff6666; margin-top: 40px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">HARD RESET PROGRESS</button>
 </main>
 
@@ -269,7 +249,6 @@ function updateUI() {
     document.getElementById('xpPct').textContent = pct;
     document.getElementById('xpFill').style.width = pct + "%";
 
-    // Standard Upgrades
     for (let k in upgrades) {
         let u = upgrades[k];
         let cost = u.base * Math.pow(u.growth, u.qty);
@@ -284,7 +263,6 @@ function updateUI() {
         }
     }
 
-    // Mushroom Buy Max Indicator
     let mBase = 3000, mGrow = 1.2;
     let tempMSpores = spores, mCount = 0, nextMCost = mBase * Math.pow(mGrow, mushrooms);
     while(tempMSpores >= nextMCost) { tempMSpores -= nextMCost; mCount++; nextMCost = mBase * Math.pow(mGrow, mushrooms + mCount); }
@@ -293,7 +271,6 @@ function updateUI() {
     document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom<br>${format(mBase * Math.pow(mGrow, mushrooms))} Spores`;
     document.getElementById('buyMushroomBtn').disabled = spores < (mBase * Math.pow(mGrow, mushrooms));
 
-    // Ascend Buy Max Indicator
     let aBase = 50, aGrow = 1.08;
     let tempAMush = mushrooms, aCount = 0, nextACost = aBase * Math.pow(aGrow, ascensionTimes);
     while(tempAMush >= nextACost) { tempAMush -= nextACost; aCount++; nextACost = aBase * Math.pow(aGrow, ascensionTimes + aCount); }
@@ -328,8 +305,8 @@ async function saveGame(showIndicator) {
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}), playerLvl, playerXP };
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
     try {
-        await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl }, { onConflict: 'username' });
-        loadLeaderboard();
+        const { error } = await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl }, { onConflict: 'username' });
+        if (!error) loadLeaderboard();
     } catch(e) {}
     if(showIndicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => document.getElementById('saveStatus').style.opacity = "0", 2000); }
 }
@@ -347,22 +324,15 @@ function initGame() {
     }
     if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
     else { document.getElementById('usernameOverlay').style.display = 'flex'; }
-    
-    // Core Game Loop
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
         if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 1800; document.getElementById('mushroomClicker').className = "shroom-normal"; } }
         else if (frenzyCooldown > 0) frenzyCooldown -= dt;
         spores += getSPS() * dt;
-        
-        // Auto Save every 15 seconds
         autoSaveCounter += dt;
         if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; }
-        
         updateUI(); document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
     }, 100);
-
-    // Live Data Updates
     setInterval(fetchChat, 4000);
     setInterval(loadLeaderboard, 10000);
 }
