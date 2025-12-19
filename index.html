@@ -223,15 +223,31 @@ function addXP(amount) {
     while (playerXP >= getNextXP()) { playerXP -= getNextXP(); playerLvl++; }
 }
 
+// RESTORED FRENZY CLICK FUNCTION
 function clickMushroom(e) {
     const el = document.getElementById('mushroomClicker');
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
-    if (frenzyCooldown <= 0 && !isFrenzyActive) { isFrenzyActive = true; frenzyTimer = 15; el.classList.add("shroom-frenzy-active"); }
-    let gain = 1 * getTotalMult(); spores += gain; addXP(1);
-    const f = document.createElement("div"); f.className = "float-text"; f.textContent = "+" + format(gain);
-    f.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + "px"; f.style.top = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) + "px";
-    document.body.appendChild(f); setTimeout(() => f.remove(), 800);
+    
+    // Check for Frenzy Activation
+    if (frenzyCooldown <= 0 && !isFrenzyActive) { 
+        isFrenzyActive = true; 
+        frenzyTimer = 15; 
+        el.classList.add("shroom-frenzy-active"); 
+    }
+    
+    let gain = 1 * getTotalMult(); 
+    spores += gain; 
+    addXP(1);
+    
+    // Float text logic
+    const f = document.createElement("div"); 
+    f.className = "float-text"; 
+    f.textContent = "+" + format(gain);
+    f.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + "px"; 
+    f.style.top = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) + "px";
+    document.body.appendChild(f); 
+    setTimeout(() => f.remove(), 800);
     updateUI();
 }
 
@@ -269,9 +285,18 @@ function updateUI() {
     
     const fStatus = document.getElementById('frenzyStatus');
     const fFill = document.getElementById('frenzyFill');
-    if (isFrenzyActive) { fStatus.textContent = "FRENZY! (" + Math.ceil(frenzyTimer) + "s)"; fFill.style.width = (frenzyTimer / 15 * 100) + "%"; }
-    else if (frenzyCooldown > 0) { fStatus.textContent = "COOLDOWN: " + Math.ceil(frenzyCooldown/60) + "m"; fFill.style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%"; }
-    else { fStatus.textContent = "READY TO FRENZY"; fFill.style.width = "100%"; }
+    if (isFrenzyActive) { 
+        fStatus.textContent = "FRENZY! (" + Math.ceil(frenzyTimer) + "s)"; 
+        fFill.style.width = (frenzyTimer / 15 * 100) + "%"; 
+    }
+    else if (frenzyCooldown > 0) { 
+        fStatus.textContent = "COOLDOWN: " + Math.ceil(frenzyCooldown/60) + "m"; 
+        fFill.style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%"; 
+    }
+    else { 
+        fStatus.textContent = "READY TO FRENZY"; 
+        fFill.style.width = "100%"; 
+    }
 
     for (let k in upgrades) {
         let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
@@ -329,7 +354,14 @@ function initGame() {
 
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
-        if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 1800; document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); } }
+        if (isFrenzyActive) { 
+            frenzyTimer -= dt; 
+            if (frenzyTimer <= 0) { 
+                isFrenzyActive = false; 
+                frenzyCooldown = 1800; // 30 minutes
+                document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
+            } 
+        }
         else if (frenzyCooldown > 0) frenzyCooldown -= dt;
         let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
         autoSaveCounter += dt; if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; }
