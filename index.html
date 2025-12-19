@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="ShroomsBloomIdle - The ultimate fungal idle experience.">
+    <meta name="description" content="ShroomsBloomIdle - An immersive fungal clicker game. Grow your colony, collect spores, and ascend through cosmic levels.">
+    <meta name="keywords" content="Idle Game, Clicker Game, Shrooms, Fungi, Online Game">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
-    <title>🍄 ShroomsBloomIdle 🍄</title>
+    <title>🍄 ShroomsBloomIdle | The Ultimate Fungal Idle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; }
@@ -42,11 +43,14 @@
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-130px); } }
 
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
-        /* Updated Leaderboard Grid for 4 columns */
-        .lb-row { display: grid; grid-template-columns: 30px 1fr 1fr 1fr 1fr; gap: 5px; padding: 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.75em; }
+        
+        /* Balanced Leaderboard Grid */
+        .lb-row { display: grid; grid-template-columns: 25px 2fr 1.5fr 1fr 1fr; gap: 4px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.72em; align-items: center; }
         
         button:disabled { opacity: 0.3; filter: grayscale(1); }
-        footer { padding: 40px 20px; opacity: 0.6; font-size: 0.8em; }
+        footer { padding: 40px 20px; opacity: 0.8; font-size: 0.8em; border-top: 1px solid #222; }
+        .legal-links a { color: var(--cyan); margin: 0 10px; text-decoration: none; }
+        .ad-slot-bottom { margin: 20px auto; max-width: 450px; min-height: 90px; background: rgba(255,255,255,0.02); }
     </style>
 </head>
 <body onload="initGame()">
@@ -64,7 +68,7 @@
     <div id="dateTimeDisplay" style="font-size:0.7em; color:#00ffff; margin-top:3px;"></div>
 </div>
 
-<div id="gameContainer">
+<main id="gameContainer">
     <div class="bar-wrapper">
         <span class="bar-text" style="color:var(--xp)">Level <span id="lvlUI">1</span> (<span id="xpPct">0</span>%)</span>
         <div class="full-bar"><div id="xpFill" class="xp-fill"></div></div>
@@ -119,17 +123,30 @@
 
     <div class="card">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS</p>
-        <div class="lb-row" style="font-weight:bold; color:var(--gold); border-bottom:2px solid #444;">
+        <div class="lb-row" style="font-weight:bold; color:var(--gold); border-bottom:1px solid #444;">
             <span>#</span><span>Name</span><span>Spores</span><span>Lvl</span><span>Asc</span>
         </div>
         <div id="leaderboardList">Syncing scores...</div>
     </div>
 
+    <div class="ad-slot-bottom">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-8763574694147463"
+             data-ad-slot="9876543210"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
     <button onclick="hardReset()" style="background: #220000; color: #ff6666; margin-top: 40px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">HARD RESET PROGRESS</button>
-</div>
+</main>
 
 <footer>
-    <div>&copy; 2025 Shrooms Bloom Idle | <a href="https://thefella7.github.io/ads.txt" style="color:var(--cyan);">Ads.txt</a></div>
+    <div class="legal-links">
+        <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a> | <a href="https://thefella7.github.io/ads.txt">Ads.txt</a>
+    </div>
+    <div style="margin-top:10px;">&copy; 2025 Shrooms Bloom Idle</div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -163,7 +180,7 @@ function format(n) {
     return n.toExponential(2);
 }
 
-// 100% (x1.0) boost per ascension added to the multiplier base
+// Fixed logic: 100% (x1.0) boost added per ascension
 function getTotalMult() { return (1 + premiumBoostAdd + (ascensionTimes * 1.0) + (playerLvl * 0.1)) * (isFrenzyActive ? 5 : 1); }
 
 function getSPS() {
@@ -277,7 +294,7 @@ function updateUI() {
         let cost = u.base * Math.pow(u.growth, u.qty);
         let btn = document.getElementById('btn-'+k);
         if(btn) {
-            // Changed text to (Owned: X)
+            // Text updated to (Owned: X)
             btn.innerHTML = `${u.name} (Owned: ${u.qty})<br>${format(cost)} Spores`;
             btn.disabled = spores < cost;
             
@@ -292,18 +309,10 @@ function updateUI() {
     let mCost = 3000 * Math.pow(1.2, mushrooms);
     document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom<br>${format(mCost)} Spores`;
     document.getElementById('buyMushroomBtn').disabled = spores < mCost;
-    let tempMS = spores, mCount = 0, nextMC = mCost;
-    while(tempMS >= nextMC) { tempMS -= nextMC; mCount++; nextMC = 3000 * Math.pow(1.2, mushrooms + mCount); }
-    document.getElementById('tag-mushrooms').textContent = "+" + mCount;
-    document.getElementById('tag-mushrooms').style.display = mCount > 0 ? "block" : "none";
     
     let aCost = 50 * Math.pow(1.08, ascensionTimes);
     document.getElementById('ascendBtn').innerHTML = `Buy Ascend<br>${format(aCost)} Mush`;
     document.getElementById('ascendBtn').disabled = mushrooms < aCost;
-    let tempAS = mushrooms, aCount = 0, nextAC = aCost;
-    while(tempAS >= nextAC) { tempAS -= nextAC; aCount++; nextAC = 50 * Math.pow(1.08, ascensionTimes + aCount); }
-    document.getElementById('tag-ascend').textContent = "+" + aCount;
-    document.getElementById('tag-ascend').style.display = aCount > 0 ? "block" : "none";
     
     const fS = document.getElementById('frenzyStatus'), fF = document.getElementById('frenzyFill');
     if (isFrenzyActive) { fS.textContent = `FRENZY: ${frenzyTimer.toFixed(1)}s`; fF.style.width = (frenzyTimer/15*100) + "%"; }
@@ -326,10 +335,9 @@ async function sendChatMessage() {
 
 async function loadLeaderboard() {
     try {
-        // Track spores, level, and ascensions
         const { data } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10);
         if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => 
-            `<div class="lb-row"><span>#${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span><span>${p.level || 1}</span><span>${p.ascensions || 0}</span></div>`
+            `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span><span>${p.level || 1}</span><span>${p.ascensions || 0}</span></div>`
         ).join('');
     } catch(e) {}
 }
@@ -339,7 +347,6 @@ async function saveGame(show) {
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}), frenzyCooldown, frenzyTimer, isFrenzyActive, playerLvl, playerXP, lastSave: Date.now() };
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
     try {
-        // Updated upsert to include level and ascensions
         await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl }, { onConflict: 'username' });
         loadLeaderboard();
     } catch(e) {}
@@ -384,9 +391,8 @@ function confirmUsername() {
     if (i.length >= 2) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); }
 }
 
-// Hard Reset modified to keep PayPal boosts and Ascensions
 function hardReset() { 
-    if(confirm("Hard reset? (Keeps PayPal Multipliers & Ascensions)")) { 
+    if(confirm("Hard reset? Spores, Levels, and Upgrades will be lost. (Keeps PayPal Multipliers & Ascensions)")) { 
         spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0;
         for (let k in upgrades) upgrades[k].qty = 0;
         saveGame(true);
@@ -397,7 +403,11 @@ function hardReset() {
 paypal.Buttons({ 
     style: { shape: 'pill', color: 'gold', height: 40 }, 
     createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-    onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) 
+    onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { 
+        premiumBoostAdd += 20; 
+        saveGame(true); 
+        updateUI(); 
+    } }) 
 }).render('#paypal-button-container');
 </script>
 </body>
