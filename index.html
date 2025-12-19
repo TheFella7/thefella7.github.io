@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="description" content="ShroomsBloomIdle - The definitive fungal idle experience. Grow, click, and ascend.">
     <meta name="keywords" content="Idle Game, Shrooms, Clicker, Fungi, AdSense Game">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0118">
+
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
     <title>🍄 ShroomsBloomIdle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -46,6 +52,7 @@
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
+        #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
     </style>
 </head>
 <body onload="initGame()">
@@ -74,14 +81,16 @@
     </div>
     
     <div id="mushroomClicker" class="shroom-normal" onclick="clickMushroom(event)">🍄</div>
-    
     <div class="spore-display"><span id="spores">0</span></div>
     
     <div class="ad-slot">ADVERTISEMENT SLOT #1</div>
 
     <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px; color:var(--cyan);">Spores Per Second: <span id="rate">0</span></div>
     
-    <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE PROGRESS</button>
+    <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+        <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE</button>
+        <button id="installBtn">📲 INSTALL APP</button>
+    </div>
 
     <div class="card">
         <div class="stat-row"><span>Total Mushrooms:</span> <b id="mushroomsUI">0</b></div>
@@ -121,7 +130,7 @@
     </div>
 
     <div class="card">
-        <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS (LIVE)</p>
+        <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS (TOP 10)</p>
         <div class="lb-row" style="font-weight:bold; color:var(--gold); border-bottom:1px solid #444;">
             <span>#</span><span>Name</span><span>Lvl</span><span>Asc</span>
         </div>
@@ -140,7 +149,6 @@
             <li><strong>Level Up:</strong> Progress happens even while you're idle.</li>
             <li><strong>Ascend:</strong> Reset for massive permanent multipliers.</li>
         </ul>
-        <p>Prestige is key—rank up your Level and Ascensions to dominate the Global Rankings.</p>
     </div>
 
     <button onclick="hardReset()" style="background: #220000; color: #ff6666; margin-top: 20px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">HARD RESET PROGRESS</button>
@@ -159,6 +167,26 @@
 <script src="https://www.paypal.com/sdk/js?client-id=AbbfCLxvNQy-PX0DlSdJarGZAHF5fPXVcO0fWdYL56bqdYQTYm2iSGbg04JQnwGGst8JYhKJcodERjC0&currency=GBP&disable-funding=credit,card"></script>
 
 <script>
+// --- PWA INSTALL LOGIC ---
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'block';
+});
+
+document.getElementById('installBtn').addEventListener('click', async () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            document.getElementById('installBtn').style.display = 'none';
+        }
+        deferredPrompt = null;
+    }
+});
+
+// --- GAME LOGIC ---
 const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", 
       SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -306,3 +334,4 @@ paypal.Buttons({
 </script>
 </body>
 </html>
+
