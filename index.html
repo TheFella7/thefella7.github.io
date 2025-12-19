@@ -306,7 +306,9 @@ async function saveGame(showIndicator) {
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
     try {
         const { error } = await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl }, { onConflict: 'username' });
-        if (!error) loadLeaderboard();
+        if (!error) {
+            setTimeout(() => { loadLeaderboard(); }, 250);
+        }
     } catch(e) {}
     if(showIndicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => document.getElementById('saveStatus').style.opacity = "0", 2000); }
 }
@@ -358,3 +360,4 @@ paypal.Buttons({
 </script>
 </body>
 </html>
+
