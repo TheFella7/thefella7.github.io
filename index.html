@@ -386,7 +386,17 @@ function initGame() {
         }
         else if (frenzyCooldown > 0) frenzyCooldown -= dt;
         
-        spores += getSPS() * dt;
+        // --- PASSIVE XP LOGIC START ---
+        let currentSPS = getSPS();
+        spores += currentSPS * dt;
+        
+        // Add XP based on passive spore generation
+        // Ratio: 0.1 XP per Spore (can be adjusted for difficulty)
+        if (currentSPS > 0) {
+            addXP(currentSPS * dt * 0.1);
+        }
+        // --- PASSIVE XP LOGIC END ---
+
         autoSaveCounter += dt;
         if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; }
         updateUI(); document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
