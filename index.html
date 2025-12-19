@@ -37,7 +37,7 @@
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; color: #000; cursor: pointer; }
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
-        .lb-row { display: grid; grid-template-columns: 25px 2fr 1.2fr 0.8fr 0.8fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.75em; align-items: center; }
+        .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.8em; align-items: center; }
         .info-section { text-align: left; line-height: 1.6; max-width: 450px; margin: 20px auto; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 16px; font-size: 0.9em; }
         .info-section h2 { color: var(--neon); font-size: 1.2em; border-bottom: 1px solid var(--neon); padding-bottom: 5px; }
         .info-section h3 { color: var(--cyan); font-size: 1em; margin-top: 15px; }
@@ -123,9 +123,9 @@
     <div class="card">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS (LIVE)</p>
         <div class="lb-row" style="font-weight:bold; color:var(--gold); border-bottom:1px solid #444;">
-            <span>#</span><span>Name</span><span>Spores</span><span>Lvl</span><span>Asc</span>
+            <span>#</span><span>Name</span><span>Lvl</span><span>Asc</span>
         </div>
-        <div id="leaderboardList">Syncing scores...</div>
+        <div id="leaderboardList">Syncing rankings...</div>
     </div>
 
     <div class="ad-slot" style="min-height: 250px;">ADVERTISEMENT SLOT #2 (DISPLAY)</div>
@@ -140,7 +140,7 @@
             <li><strong>Level Up:</strong> Progress happens even while you're idle.</li>
             <li><strong>Ascend:</strong> Reset for massive permanent multipliers.</li>
         </ul>
-        <p>Every spore counts toward your legacy on our global live leaderboards.</p>
+        <p>Prestige is key—rank up your Level and Ascensions to dominate the Global Rankings.</p>
     </div>
 
     <button onclick="hardReset()" style="background: #220000; color: #ff6666; margin-top: 20px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">HARD RESET PROGRESS</button>
@@ -159,7 +159,6 @@
 <script src="https://www.paypal.com/sdk/js?client-id=AbbfCLxvNQy-PX0DlSdJarGZAHF5fPXVcO0fWdYL56bqdYQTYm2iSGbg04JQnwGGst8JYhKJcodERjC0&currency=GBP&disable-funding=credit,card"></script>
 
 <script>
-// (All game logic remains identical to previous version)
 const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", 
       SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -272,7 +271,7 @@ function updateUI() {
 }
 async function fetchChat() { try { const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(20); if (data) document.getElementById('chatContainer').innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); } catch(e) {} }
 async function sendChatMessage() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } }
-async function loadLeaderboard() { try { const { data } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10); if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span><span>${p.level || 1}</span><span>${p.ascensions || 0}</span></div>`).join(''); } catch(e) {} }
+async function loadLeaderboard() { try { const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${p.level || 1}</span><span>${p.ascensions || 0}</span></div>`).join(''); } catch(e) {} }
 async function saveGame(showIndicator) {
     if (!pName) return;
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, frenzyCooldown, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
