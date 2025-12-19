@@ -3,12 +3,12 @@
   "name": "Shrooms Bloom Idle",
   "icons": [
     {
-      "src": "https://emoji.slack-edge.com/T024BEAUL/mushroom/15f02f90a1.png",
+      "src": "https://fav.farm/🍄",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://emoji.slack-edge.com/T024BEAUL/mushroom/15f02f90a1.png",
+      "src": "https://fav.farm/🍄",
       "type": "image/png",
       "sizes": "512x512"
     }
@@ -19,3 +19,4 @@
   "scope": "/",
   "theme_color": "#ff00ff"
 }
+
