@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
-    
     <title>🍄 Shrooms Bloom Idle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
@@ -13,6 +12,20 @@
         #dateTimeDisplay { font-size: 0.7em; color: #00ffff; margin-top: 5px; opacity: 0.8; }
         #saveStatus { font-size: 0.65em; color: #00ff00; margin-top: 3px; opacity: 0; transition: opacity 0.5s; font-weight: bold; }
         
+        /* Mushroom Animations */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes frenzyShake { 0% { transform: scale(1.1) translate(0,0); } 25% { transform: scale(1.1) translate(2px, -2px); } 50% { transform: scale(1.1) translate(-2px, 2px); } 75% { transform: scale(1.1) translate(2px, 2px); } 100% { transform: scale(1.1) translate(0,0); } }
+        
+        .shroom-normal { animation: pulse 3s infinite ease-in-out; filter: drop-shadow(0 0 10px rgba(255, 0, 255, 0.3)); }
+        .shroom-frenzy { animation: frenzyShake 0.1s infinite; filter: drop-shadow(0 0 25px #ff0000) hue-rotate(320deg); }
+        
+        #mushroomClicker{ font-size:110px; cursor:pointer; margin: 15px 0; display:inline-block; transition: transform 0.1s; z-index: 10; outline: none; -webkit-tap-highlight-color: transparent; position: relative;}
+        #mushroomClicker:active{transform: scale(0.9) !important;}
+        
+        /* Floating Text */
+        .float-text { position: absolute; color: #ffd700; font-weight: bold; pointer-events: none; animation: floatUp 0.8s forwards; z-index: 100; font-size: 1.2em; text-shadow: 0 0 5px #000; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+
         .btn-group { display: flex; flex-direction: column; gap: 2px; margin: 5px; position: relative; }
         button{background:linear-gradient(45deg,#8a2be2,#00ffff);border:none;border-radius:12px;padding:12px;color:#000;font-weight:bold;cursor:pointer;transition: 0.1s; min-width: 145px; font-size: 0.85em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); -webkit-tap-highlight-color: transparent;}
         .max-btn { background: #ffd700; padding: 4px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; min-width: 145px; }
@@ -20,9 +33,6 @@
         button:disabled{opacity:0.3;cursor:not-allowed;filter:grayscale(1);box-shadow: none; color: #444;}
         
         .afford-tag { position: absolute; top: -5px; right: -5px; background: #ff00ff; color: #fff; font-size: 0.65em; padding: 2px 6px; border-radius: 10px; border: 1px solid #fff; z-index: 5; font-weight: bold; display: none;}
-        
-        #mushroomClicker{ font-size:100px; cursor:pointer; margin: 15px 0; display:inline-block; transition: transform 0.05s; z-index: 10; outline: none; -webkit-tap-highlight-color: transparent; position: relative;}
-        #mushroomClicker:active{transform: scale(1.1);}
         
         .bar{width:90%;height:12px;background:#111;border-radius:10px;margin:10px auto;overflow:hidden;border:1px solid #333;}
         .frenzyBar{background:linear-gradient(90deg, #ff0000, #ff8c00); width: 0%; height: 100%; transition: width 0.1s linear;}
@@ -40,30 +50,25 @@
 </head>
 <body onload="initGame()">
 
-<div id="usernameOverlay">
+<div id="usernameOverlay" style="display:none;">
     <h1>🍄 Shrooms Bloom Idle 🍄</h1>
-    <p>Establish your fungal colony identity</p>
     <input type="text" id="playerNameInput" class="nameInput" maxlength="15" placeholder="Enter Username...">
     <button onclick="confirmUsername()">Start Spreading Spores</button>
 </div>
 
 <div id="topBar">
     <div id="title">🍄 Shrooms Bloom Idle 🍄</div>
-    <div id="displayUsername" style="color: #00ffff; font-size:0.8em; font-weight: bold;">-</div>
+    <div id="displayUsername" style="color: #00ffff; font-size:0.8em; font-weight: bold;">Loading...</div>
     <div id="dateTimeDisplay"></div>
     <div id="saveStatus">Progress Saved!</div>
 </div>
 
 <div id="gameContainer">
-    <div class="card" style="text-align: left; font-size: 0.85em; line-height: 1.4; border-color: #00ff00;">
-        <h3 style="color: #00ff00; margin-top: 0; text-align: center;">How to Play 🍄</h3>
-        <p>Welcome to <b>Shrooms Bloom Idle</b>. Click the mushroom to generate spores. Use spores to purchase upgrades that automate your harvest. <b>Ascend</b> to gain massive multipliers!</p>
-    </div>
-
     <div id="frenzyStatus" style="margin-top:10px; font-weight:bold; font-size:0.85em;">READY TO FRENZY (x5)</div>
     <div class="bar" style="height: 10px; width: 70%;"><div id="frenzyFill" class="frenzyBar"></div></div>
 
-    <div id="mushroomClicker" onclick="clickMushroom(event)">🍄</div>
+    <div id="mushroomClicker" class="shroom-normal" onclick="clickMushroom(event)">🍄</div>
+    <div style="font-size: 0.9em; color: #00ffff; margin-bottom: 10px;">Per Tap: <span id="tapVal">1</span></div>
 
     <div style="font-size: 1.4em; color: #ffd700; margin: 5px 0;">Spores: <b id="spores">0</b></div>
     <div style="font-size: 0.85em; opacity: 0.7; margin-bottom: 10px;">SPS: <span id="rate">0</span></div>
@@ -108,22 +113,15 @@
 
     <div class="card" style="border-color: #555; background: rgba(0,0,0,0.3); margin-top: 20px; overflow: hidden; min-height: 100px;">
         <p style="font-size: 0.6em; color: #777; margin-bottom: 5px;">ADVERTISEMENT</p>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-8763574694147463"
-             data-ad-slot="3318123354" 
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-8763574694147463" data-ad-slot="3318123354" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
 </div>
 
 <footer>
     <div>&copy; 2025 Shrooms Bloom Idle</div>
     <div class="footer-links">
-        <a onclick="alert('Privacy: We use LocalStorage to save progress and AdSense for advertising.')">Privacy Policy</a>
+        <a onclick="alert('Privacy: We use LocalStorage to save progress.')">Privacy Policy</a>
         <a onclick="alert('Terms: In-game purchases are non-refundable boosts.')">Terms</a>
         <a href="https://thefella7.github.io/ads.txt">AdSense Verification</a>
     </div>
@@ -133,12 +131,10 @@
 <script src="https://www.paypal.com/sdk/js?client-id=AbbfCLxvNQy-PX0DlSdJarGZAHF5fPXVcO0fWdYL56bqdYQTYm2iSGbg04JQnwGGst8JYhKJcodERjC0&currency=GBP&disable-funding=credit,card"></script>
 
 <script>
-// Configurations
 const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", 
       SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-// Game State
 let spores = 0, mushrooms = 0, ascensionTimes = 0, level = 1, exp = 0, expNext = 100;
 let pName = "", premiumBoostAdd = 0, frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false;
 
@@ -150,7 +146,6 @@ let upgrades = {
     u5: { name: "Void Mycelium", base: 150000, rate: 2200, qty: 0, growth: 1.15 }
 };
 
-// Utilities
 function format(n) {
     if (!n || n < 0) return "0";
     if (n < 1000) return Math.floor(n).toLocaleString();
@@ -166,10 +161,26 @@ function getRawSPS() {
     return b * getTotalMult();
 }
 
-// Logic
 function clickMushroom(event) {
-    if (frenzyCooldown <= 0 && !isFrenzyActive) { isFrenzyActive = true; frenzyTimer = 15; }
-    let gain = 1 * getTotalMult(); spores += gain; gainExp(gain * 0.5); updateUI();
+    if (frenzyCooldown <= 0 && !isFrenzyActive) { 
+        isFrenzyActive = true; 
+        frenzyTimer = 15; 
+        document.getElementById('mushroomClicker').className = "shroom-frenzy";
+    }
+    let gain = 1 * getTotalMult(); 
+    spores += gain; 
+    gainExp(gain * 0.5);
+    
+    // Floating text effect
+    const ft = document.createElement("div");
+    ft.className = "float-text";
+    ft.textContent = "+" + format(gain);
+    ft.style.left = event.clientX + "px";
+    ft.style.top = event.clientY + "px";
+    document.body.appendChild(ft);
+    setTimeout(() => ft.remove(), 800);
+    
+    updateUI();
 }
 
 function gainExp(amt) { exp += amt; while (exp >= expNext) { exp -= expNext; level++; expNext = Math.floor(expNext * 2.5); } }
@@ -206,13 +217,14 @@ function ascend() {
     let aCost = 50 * Math.pow(1.08, ascensionTimes);
     if (mushrooms >= aCost) {
         ascensionTimes++; spores = 0; mushrooms = 0; for (let k in upgrades) upgrades[k].qty = 0;
-        saveGame(true); updateUI(); alert("The forest has ascended! Global Multiplier increased.");
+        saveGame(true); updateUI(); alert("The forest has ascended!");
     }
 }
 
 function updateUI() {
     document.getElementById('spores').textContent = format(spores);
     document.getElementById('rate').textContent = format(getRawSPS()) + "/sec";
+    document.getElementById('tapVal').textContent = format(1 * getTotalMult());
     document.getElementById('mushroomsUI').textContent = format(mushrooms);
     document.getElementById('ascCountUI').textContent = format(ascensionTimes);
     document.getElementById('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
@@ -232,9 +244,14 @@ function updateUI() {
     let aCost = 50 * Math.pow(1.08, ascensionTimes);
     document.getElementById('ascendBtn').innerHTML = `Ascend<br>${format(aCost)} Mush`;
     document.getElementById('ascendBtn').disabled = mushrooms < aCost;
+    
     const fS = document.getElementById('frenzyStatus'), fF = document.getElementById('frenzyFill');
-    if (isFrenzyActive) { fS.textContent = `🔥 FRENZY: ${frenzyTimer.toFixed(1)}s`; fF.style.width = (frenzyTimer/15*100) + "%"; }
-    else if (frenzyCooldown > 0) { fS.textContent = `❄️ CD: ${Math.floor(frenzyCooldown)}s`; fF.style.width = ((1800-frenzyCooldown)/1800*100) + "%"; }
+    if (isFrenzyActive) { 
+        fS.textContent = `🔥 FRENZY: ${frenzyTimer.toFixed(1)}s`; fF.style.width = (frenzyTimer/15*100) + "%"; 
+    }
+    else if (frenzyCooldown > 0) { 
+        fS.textContent = `❄️ CD: ${Math.floor(frenzyCooldown)}s`; fF.style.width = ((1800-frenzyCooldown)/1800*100) + "%"; 
+    }
     else { fS.textContent = "READY TO FRENZY"; fF.style.width = "100%"; }
 }
 
@@ -271,14 +288,18 @@ function initGame() {
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0; 
     }
     if (!pName) { document.getElementById('usernameOverlay').style.display = 'flex'; } 
-    else { 
-        document.getElementById('usernameOverlay').style.display = 'none'; 
-        document.getElementById('displayUsername').textContent = "Shroomer: " + pName; 
-    }
+    else { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
     loadLeaderboard(); setInterval(loadLeaderboard, 60000);
     paypal.Buttons({ style: { shape: 'pill', color: 'gold', layout: 'vertical' }, createOrder: (d, a) => a.order.create({ purchase_units: [{ description: "x20 Permanent Earnings", amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) }).render('#paypal-button-container');
     setInterval(() => {
-        if (isFrenzyActive) { frenzyTimer -= 0.1; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 1800; } } else if (frenzyCooldown > 0) { frenzyCooldown -= 0.1; }
+        if (isFrenzyActive) { 
+            frenzyTimer -= 0.1; 
+            if (frenzyTimer <= 0) { 
+                isFrenzyActive = false; 
+                frenzyCooldown = 1800; 
+                document.getElementById('mushroomClicker').className = "shroom-normal";
+            } 
+        } else if (frenzyCooldown > 0) { frenzyCooldown -= 0.1; }
         spores += (getRawSPS() / 10); updateUI();
         document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
     }, 100);
@@ -293,4 +314,3 @@ function hardReset() { if (confirm("Reset everything? Paid boosts stay.")) { let
 </script>
 </body>
 </html>
-
