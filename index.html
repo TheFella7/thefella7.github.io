@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire.">
+    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire in this deep idle clicker game.">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
@@ -44,7 +44,8 @@
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
         
         .spore-display { font-size: 2.5em; color: var(--gold); font-weight: 800; text-shadow: 0 0 15px rgba(255,215,0,0.3); margin: 10px 0; }
-        .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); }
+        .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); text-align: left; }
+        .card h3 { margin-top: 0; color: var(--cyan); font-size: 1.1em; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .stat-row { display: flex; justify-content: space-between; padding: 5px 10px; font-size: 0.9em; }
         .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
         .btn-group { display: flex; flex-direction: column; position: relative; }
@@ -56,10 +57,12 @@
         .ad-slot { min-height: 100px; margin: 20px auto; max-width: 450px; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; font-size: 0.7em; color: #444; }
         button:disabled { opacity: 0.3; filter: grayscale(1); }
         
-        /* Controls */
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
-        .hard-reset-btn { background: #220000; color: #ff6666; margin-top: 20px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
+        .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
         
+        .info-list { font-size: 0.85em; padding-left: 15px; margin: 10px 0; }
+        .info-list li { margin-bottom: 5px; color: #ccc; }
+
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
@@ -103,11 +106,21 @@
     
     <div class="ad-slot">ADVERTISEMENT SLOT #1</div>
 
-    <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px; color:var(--cyan);">Spores Per Second: <span id="rate">0</span></div>
+    <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px; color:var(--cyan); font-weight: bold;">Spores Per Second: <span id="rate">0</span></div>
     
     <div style="display: flex; justify-content: center; flex-wrap: wrap;">
         <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE</button>
         <button id="installBtn" onclick="installApp()">📲 INSTALL APP</button>
+    </div>
+
+    <div class="card">
+        <h3>📖 How to Play</h3>
+        <ul class="info-list">
+            <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
+            <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
+            <li><b>Frenzy Mode:</b> Reach enough clicks to trigger a 5x boost for 15 seconds!</li>
+            <li><b>Ascend:</b> Once you have enough Shrooms, Ascend to gain a permanent multiplier.</li>
+        </ul>
     </div>
 
     <div class="card">
@@ -143,11 +156,21 @@
 
     <div class="card">
         <div id="paypal-button-container"></div>
-        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4;">x20 Permanent Multiplier (£1.69)</p>
+        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£1.69)</p>
     </div>
 
     <div class="card">
-        <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan);">WORLD RANKINGS</p>
+        <h3>✨ Game Features</h3>
+        <ul class="info-list">
+            <li><b>Global Leaderboard:</b> Compete with shroomers worldwide.</li>
+            <li><b>Offline Progress:</b> Earn spores even while you are away.</li>
+            <li><b>Cloud Saving:</b> Your progress is backed up automatically.</li>
+            <li><b>PWA Support:</b> Install as an app on your home screen!</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan); text-align: center;">WORLD RANKINGS</p>
         <div id="leaderboardList">Syncing...</div>
     </div>
 
@@ -181,7 +204,6 @@ let upgrades = {
     u6: { name: "Cosmic Cloud", base: 1200000, rate: 15000, qty: 0, growth: 1.15 }
 };
 
-// --- LOGIC ---
 function format(n) {
     if (!n || n < 0) return "0";
     if (n < 1000) return Math.floor(n).toLocaleString();
@@ -272,7 +294,6 @@ function updateUI() {
     document.getElementById('ascendBtn').disabled = mushrooms < (50 * Math.pow(1.08, ascensionTimes));
 }
 
-// --- PERSISTENCE ---
 async function saveGame(indicator) {
     if (!pName) return;
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, frenzyCooldown, lastTime: Date.now(), upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
