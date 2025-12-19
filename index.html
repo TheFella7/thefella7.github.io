@@ -11,7 +11,7 @@
         :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; user-select: none; }
         
-        /* FIX: Remove blue highlight/square on click */
+        /* Removed blue square/highlight on click */
         * { -webkit-tap-highlight-color: transparent; outline: none; }
 
         #topBar { padding: 10px; position: sticky; top: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 2px solid var(--neon); }
@@ -26,20 +26,17 @@
         
         #mushroomClicker { font-size: 110px; cursor: pointer; margin: 15px 0; display: inline-block; transition: transform 0.05s; z-index: 10; position: relative; }
         .shroom-normal { animation: pulse 3s infinite ease-in-out; }
-        
-        /* VISUAL: Click effect */
         .shroom-click { transform: scale(0.85) rotate(5deg) !important; }
         
+        /* Frenzy Visual */
+        .shroom-frenzy { animation: frenzyShake 0.1s infinite alternate !important; filter: drop-shadow(0 0 30px #ff0000) !important; }
+        @keyframes frenzyShake { 0% { transform: scale(1.1) rotate(-3deg); } 100% { transform: scale(1.2) rotate(3deg); } }
+
+        /* Floating Text */
+        .floating-earn { position: fixed; pointer-events: none; color: var(--gold); font-weight: 900; font-size: 1.4em; animation: floatUp 0.8s ease-out forwards; z-index: 1000; text-shadow: 0 0 5px #000; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        
-        /* VISUAL: Frenzy effect */
-        .shroom-frenzy { animation: frenzyShake 0.1s infinite alternate !important; filter: drop-shadow(0 0 30px #ff0000) hue-rotate(320deg) !important; }
-        @keyframes frenzyShake { 0% { transform: scale(1.1) rotate(-2deg); } 100% { transform: scale(1.15) rotate(2deg); } }
-
-        /* Floating Tap Earning Visual */
-        .tap-val { position: fixed; pointer-events: none; color: var(--gold); font-weight: bold; font-size: 1.2em; animation: tapFloat 0.8s ease-out forwards; z-index: 1000; text-shadow: 0 0 5px #000; }
-        @keyframes tapFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
-
         .spore-display { font-size: 2.5em; color: var(--gold); font-weight: 800; text-shadow: 0 0 15px rgba(255,215,0,0.3); margin: 10px 0; }
         .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); }
         .stat-row { display: flex; justify-content: space-between; padding: 5px 10px; font-size: 0.9em; }
@@ -123,11 +120,6 @@
         </div>
         <div id="leaderboardList">Syncing scores...</div>
     </div>
-    <div class="ad-slot-bottom" style="margin-top:20px;">
-        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-8763574694147463" data-ad-slot="9876543210" data-ad-format="auto" data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
-    <button onclick="hardReset()" style="background: #220000; color: #ff6666; margin-top: 40px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em;">HARD RESET PROGRESS</button>
 </main>
 
 <footer>
@@ -193,25 +185,25 @@ function clickMushroom(event) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
-    // Logic: If not in cooldown, start or refresh frenzy
+    // Logic: If not in cooldown, start or replenish frenzy timer
     if (frenzyCooldown <= 0) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
-        el.className = "shroom-frenzy"; 
+        el.classList.add("shroom-frenzy"); 
     }
     
     let gain = 1 * getTotalMult(); 
     spores += gain;
     addXP(1);
 
-    // VISUAL: Tap earning indicator
-    const tapVal = document.createElement('div');
-    tapVal.className = 'tap-val';
-    tapVal.textContent = "+" + format(gain);
-    tapVal.style.left = (event.clientX || event.pageX) + "px";
-    tapVal.style.top = (event.clientY || event.pageY) + "px";
-    document.body.appendChild(tapVal);
-    setTimeout(() => tapVal.remove(), 800);
+    // Show Tap Earning Visual
+    const earnText = document.createElement("div");
+    earnText.className = "floating-earn";
+    earnText.textContent = "+" + format(gain);
+    earnText.style.left = (event.clientX || event.touches[0].clientX) + "px";
+    earnText.style.top = (event.clientY || event.touches[0].clientY) + "px";
+    document.body.appendChild(earnText);
+    setTimeout(() => earnText.remove(), 800);
 
     updateUI();
 }
@@ -282,18 +274,20 @@ function updateUI() {
     document.getElementById('xpPct').textContent = pct;
     document.getElementById('xpFill').style.width = pct + "%";
 
-    // Frenzy Status Bar update
+    // Frenzy Logic UI
+    const fStatus = document.getElementById('frenzyStatus');
+    const fFill = document.getElementById('frenzyFill');
     if (isFrenzyActive) {
-        document.getElementById('frenzyStatus').textContent = `FRENZY ACTIVE (${Math.ceil(frenzyTimer)}s)`;
-        document.getElementById('frenzyFill').style.width = (frenzyTimer / 15 * 100) + "%";
+        fStatus.textContent = "FRENZY ACTIVE! (" + Math.ceil(frenzyTimer) + "s)";
+        fFill.style.width = (frenzyTimer / 15 * 100) + "%";
     } else if (frenzyCooldown > 0) {
-        let m = Math.floor(frenzyCooldown / 60);
-        let s = Math.floor(frenzyCooldown % 60);
-        document.getElementById('frenzyStatus').textContent = `COOLDOWN: ${m}m ${s}s`;
-        document.getElementById('frenzyFill').style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%";
+        let mins = Math.floor(frenzyCooldown / 60);
+        let secs = Math.floor(frenzyCooldown % 60);
+        fStatus.textContent = "COOLDOWN: " + mins + "m " + secs + "s";
+        fFill.style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%";
     } else {
-        document.getElementById('frenzyStatus').textContent = "READY TO FRENZY";
-        document.getElementById('frenzyFill').style.width = "100%";
+        fStatus.textContent = "READY TO FRENZY";
+        fFill.style.width = "100%";
     }
 
     for (let k in upgrades) {
@@ -347,6 +341,7 @@ async function loadLeaderboard() {
     } catch(e) {}
 }
 
+// SAVING: Added frenzyCooldown to the save object
 async function saveGame(showIndicator) {
     if (!pName) return;
     const d = { 
@@ -358,7 +353,7 @@ async function saveGame(showIndicator) {
         upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}), 
         playerLvl, 
         playerXP,
-        frenzyCooldown // FIX: Persistence for cooldown
+        frenzyCooldown 
     };
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
     try {
@@ -372,37 +367,42 @@ function initGame() {
     const container = document.getElementById('upgradeContainer');
     container.innerHTML = "";
     for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; }
+    
+    // LOADING: Now restores everything including cooldowns
     const saved = JSON.parse(localStorage.getItem("shroom_save_v4"));
     if (saved) { 
-        spores = saved.spores || 0; mushrooms = saved.mushrooms || 0; ascensionTimes = saved.ascensionTimes || 0; 
-        pName = saved.pName || ""; premiumBoostAdd = saved.premiumBoostAdd || 0;
-        playerLvl = saved.playerLvl || 1; playerXP = saved.playerXP || 0;
-        frenzyCooldown = saved.frenzyCooldown || 0; // FIX: Reload cooldown state
+        spores = saved.spores || 0; 
+        mushrooms = saved.mushrooms || 0; 
+        ascensionTimes = saved.ascensionTimes || 0; 
+        pName = saved.pName || ""; 
+        premiumBoostAdd = saved.premiumBoostAdd || 0;
+        playerLvl = saved.playerLvl || 1; 
+        playerXP = saved.playerXP || 0;
+        frenzyCooldown = saved.frenzyCooldown || 0;
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0;
     }
+
     if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
     else { document.getElementById('usernameOverlay').style.display = 'flex'; }
+    
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
         
-        // Timer Logic
+        // Frenzy Logic: Replenish on click, cooldown on miss
         if (isFrenzyActive) { 
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 1800; // 30 Min Cooldown
-                document.getElementById('mushroomClicker').className = "shroom-normal"; 
-                saveGame(false); // Save cooldown state immediately
+                frenzyCooldown = 1800; // 30 mins
+                document.getElementById('mushroomClicker').classList.remove("shroom-frenzy"); 
             } 
-        }
-        else if (frenzyCooldown > 0) {
+        } else if (frenzyCooldown > 0) {
             frenzyCooldown -= dt;
-            if (frenzyCooldown < 0) frenzyCooldown = 0;
         }
 
         spores += getSPS() * dt;
         autoSaveCounter += dt;
-        if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; }
+        if (autoSaveCounter >= 10) { saveGame(false); autoSaveCounter = 0; }
         updateUI(); document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
     }, 100);
     setInterval(fetchChat, 4000);
@@ -415,10 +415,9 @@ function confirmUsername() {
 }
 
 function hardReset() { 
-    if(confirm("Hard reset? (Keeps PayPal Boosts & Ascensions)")) { 
-        spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0; frenzyCooldown = 0;
-        for (let k in upgrades) upgrades[k].qty = 0;
-        saveGame(true); location.reload();
+    if(confirm("Hard reset? This deletes all progress!")) { 
+        localStorage.removeItem("shroom_save_v4");
+        location.reload();
     } 
 }
 
