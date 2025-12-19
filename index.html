@@ -268,6 +268,7 @@ const badWords = ["nazi", "slur1", "slur2"];
 function filterText(text) {
     let f = text; badWords.forEach(w => { f = f.replace(new RegExp(w, "gi"), "****"); }); return f;
 }
+
 async function fetchChat() {
     try {
         const { data, error } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(40);
@@ -279,26 +280,46 @@ async function fetchChat() {
         }
     } catch(e) { console.error("Chat Fetch Error:", e); }
 }
+
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
     let msg = input.value.trim();
     if (msg && pName) {
         const { error } = await supabaseClient.from('chat').insert({ username: pName, message: filterText(msg) });
-        if(error) { console.error("SEND ERROR:", error.message); alert("Error sending: " + error.message); }
+        if(error) { console.error("SEND ERROR:", error.message); }
         input.value = ""; fetchChat();
     }
 }
+
 async function loadLeaderboard() {
-    const { data } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10);
-    if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>#${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span></div>`).join('');
+    try {
+        const { data, error } = await supabaseClient.from('leaderboard').select('*').order('spores', { ascending: false }).limit(10);
+        if (data) {
+            document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>#${i+1}</span><span>${p.username}</span><span>${format(p.spores)}</span></div>`).join('');
+        }
+    } catch(e) { console.error("LB Load Error"); }
 }
 
-function saveGame(show) {
+async function saveGame(show) {
     if (!pName) return;
     const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}), frenzyTimer, frenzyCooldown, isFrenzyActive, lastSave: Date.now() };
     localStorage.setItem("shroom_save_final_v3", JSON.stringify(d));
-    supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes }, { onConflict: 'username' });
-    if(show) { const ss = document.getElementById('saveStatus'); ss.style.opacity = "1"; setTimeout(() => ss.style.opacity = "0", 2000); }
+    
+    // Improved Upsert logic for Supabase
+    try {
+        await supabaseClient.from('leaderboard').upsert({ 
+            username: pName, 
+            spores: Math.floor(spores), 
+            ascensions: ascensionTimes,
+            updated_at: new Date()
+        }, { onConflict: 'username' });
+    } catch (e) { console.error("Sync error"); }
+
+    if(show) { 
+        const ss = document.getElementById('saveStatus'); 
+        ss.style.opacity = "1"; 
+        setTimeout(() => ss.style.opacity = "0", 2000); 
+    }
 }
 
 function hardReset() { 
@@ -319,6 +340,7 @@ function initGame() {
     const container = document.getElementById('upgradeContainer');
     container.innerHTML = "";
     for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" id="max-btn-${k}" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; }
+    
     const saved = JSON.parse(localStorage.getItem("shroom_save_final_v3"));
     if (saved) { 
         spores = saved.spores || 0; mushrooms = saved.mushrooms || 0; ascensionTimes = saved.ascensionTimes || 0; pName = saved.pName || ""; 
@@ -326,9 +348,19 @@ function initGame() {
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0;
         let off = (Date.now() - (saved.lastSave || Date.now())) / 1000; if (off > 1) spores += getRawSPS() * off;
     }
-    if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
-    else { document.getElementById('usernameOverlay').style.display = 'flex'; }
-    loadLeaderboard(); fetchChat(); setInterval(fetchChat, 4000);
+    
+    if (pName) { 
+        document.getElementById('usernameOverlay').style.display = 'none'; 
+        document.getElementById('displayUsername').textContent = "Shroomer: " + pName; 
+    } else { 
+        document.getElementById('usernameOverlay').style.display = 'flex'; 
+    }
+
+    loadLeaderboard(); 
+    fetchChat(); 
+    setInterval(fetchChat, 5000);
+    setInterval(loadLeaderboard, 30000); // Sync leaderboard every 30 seconds
+
     paypal.Buttons({ style: { shape: 'pill', color: 'gold', height: 40 }, createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) }).render('#paypal-button-container');
     
     lastUpdate = Date.now();
@@ -337,7 +369,7 @@ function initGame() {
         if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 1800; document.getElementById('mushroomClicker').className = "shroom-normal"; } }
         else if (frenzyCooldown > 0) frenzyCooldown -= dt;
         spores += (getRawSPS() * dt); autoSaveCounter += dt;
-        if (autoSaveCounter >= 10) { saveGame(true); autoSaveCounter = 0; }
+        if (autoSaveCounter >= 15) { saveGame(true); autoSaveCounter = 0; }
         updateUI(); document.getElementById('dateTimeDisplay').textContent = new Date().toLocaleString();
     }, 100);
 }
