@@ -223,13 +223,11 @@ function addXP(amount) {
     while (playerXP >= getNextXP()) { playerXP -= getNextXP(); playerLvl++; }
 }
 
-// RESTORED FRENZY CLICK FUNCTION
 function clickMushroom(e) {
     const el = document.getElementById('mushroomClicker');
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
-    // Check for Frenzy Activation
     if (frenzyCooldown <= 0 && !isFrenzyActive) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
@@ -240,7 +238,6 @@ function clickMushroom(e) {
     spores += gain; 
     addXP(1);
     
-    // Float text logic
     const f = document.createElement("div"); 
     f.className = "float-text"; 
     f.textContent = "+" + format(gain);
@@ -280,7 +277,11 @@ function updateUI() {
     document.getElementById('ascCountUI').textContent = format(ascensionTimes);
     document.getElementById('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
     document.getElementById('lvlUI').textContent = playerLvl;
-    let pct = Math.floor((playerXP / getNextXP()) * 100);
+    
+    // UPDATED LEVEL % CALCULATION
+    let nextXP = getNextXP();
+    let pct = Math.floor((playerXP / nextXP) * 100);
+    document.getElementById('xpPct').textContent = pct; // Fixed: Set the text content of the percentage
     document.getElementById('xpFill').style.width = pct + "%";
     
     const fStatus = document.getElementById('frenzyStatus');
@@ -358,7 +359,7 @@ function initGame() {
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 1800; // 30 minutes
+                frenzyCooldown = 1800;
                 document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
             } 
         }
