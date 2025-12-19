@@ -40,28 +40,14 @@
         .lb-row { display: grid; grid-template-columns: 50px 1fr 1fr; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.85em; }
         footer { padding: 40px 20px; opacity: 0.6; font-size: 0.8em; }
 
-        /* Dedicated Ad Slot Styling */
-        .ad-container {
+        .ad-unit-wrapper {
             margin: 20px auto;
             max-width: 420px;
             min-height: 100px;
-            background: rgba(0,0,0,0.3);
-            border: 1px dashed rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
+            background: rgba(255, 255, 255, 0.02);
             border-radius: 8px;
-        }
-        .ad-label {
-            position: absolute;
-            top: 2px;
-            left: 5px;
-            font-size: 0.6em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.3);
-            pointer-events: none;
+            padding: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
@@ -124,15 +110,16 @@
         </div>
     </div>
 
-    <div class="ad-container">
-        <span class="ad-label">Advertisement</span>
+    <div class="ad-unit-wrapper">
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-8763574694147463"
-             data-ad-slot="AUTO"
+             data-ad-slot="8195879662"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
-        <script> (adsbygoogle = window.adsbygoogle || []).push({}); </script>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
     </div>
 
     <div class="card" style="border-color: #ff69b4; background: rgba(255, 105, 180, 0.08);">
@@ -363,4 +350,3 @@ document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e
 </script>
 </body>
 </html>
-
