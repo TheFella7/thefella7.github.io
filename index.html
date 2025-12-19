@@ -23,7 +23,6 @@
         #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 15px; }
         
-        /* Modal for Offline Earnings */
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg); border: 2px solid var(--neon); padding: 30px; border-radius: 20px; max-width: 300px; box-shadow: 0 0 30px var(--neon); }
 
@@ -56,6 +55,11 @@
         .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.85em; align-items: center; }
         .ad-slot { min-height: 100px; margin: 20px auto; max-width: 450px; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; font-size: 0.7em; color: #444; }
         button:disabled { opacity: 0.3; filter: grayscale(1); }
+        
+        /* Controls */
+        .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
+        .hard-reset-btn { background: #220000; color: #ff6666; margin-top: 20px; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
+        
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
@@ -101,7 +105,8 @@
 
     <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px; color:var(--cyan);">Spores Per Second: <span id="rate">0</span></div>
     
-    <div style="display: flex; justify-content: center;">
+    <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+        <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE</button>
         <button id="installBtn" onclick="installApp()">📲 INSTALL APP</button>
     </div>
 
@@ -147,6 +152,8 @@
     </div>
 
     <div class="ad-slot" style="min-height: 250px;">ADVERTISEMENT SLOT #2</div>
+    
+    <button class="hard-reset-btn" onclick="hardReset()">HARD RESET PROGRESS</button>
 </main>
 
 <footer>
@@ -201,7 +208,7 @@ function clickMushroom(e) {
     if (frenzyCooldown <= 0 && !isFrenzyActive) { isFrenzyActive = true; frenzyTimer = 15; el.classList.add("shroom-frenzy-active"); }
     let gain = 1 * getTotalMult(); spores += gain; addXP(1);
     const f = document.createElement("div"); f.className = "float-text"; f.textContent = "+" + format(gain);
-    f.style.left = (e.clientX || e.touches[0].clientX) + "px"; f.style.top = (e.clientY || e.touches[0].clientY) + "px";
+    f.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + "px"; f.style.top = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) + "px";
     document.body.appendChild(f); setTimeout(() => f.remove(), 800);
     updateUI();
 }
@@ -222,11 +229,11 @@ function ascend(isMax) {
     const b = 50, g = 1.08;
     if (isMax) {
         let count = 0; while (mushrooms >= (b * Math.pow(g, ascensionTimes))) { mushrooms -= (b * Math.pow(g, ascensionTimes)); ascensionTimes++; count++; }
-        if (count > 0) resetGame();
-    } else { let c = b * Math.pow(g, ascensionTimes); if (mushrooms >= c) { mushrooms -= c; ascensionTimes++; resetGame(); } }
+        if (count > 0) resetForAscend();
+    } else { let c = b * Math.pow(g, ascensionTimes); if (mushrooms >= c) { mushrooms -= c; ascensionTimes++; resetForAscend(); } }
     updateUI();
 }
-function resetGame() { spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0; for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); }
+function resetForAscend() { spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0; for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); }
 
 function updateUI() {
     document.getElementById('spores').textContent = format(spores);
@@ -244,7 +251,6 @@ function updateUI() {
     else if (frenzyCooldown > 0) { fStatus.textContent = "COOLDOWN: " + Math.ceil(frenzyCooldown/60) + "m"; fFill.style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%"; }
     else { fStatus.textContent = "READY TO FRENZY"; fFill.style.width = "100%"; }
 
-    // Upgrade buttons
     for (let k in upgrades) {
         let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
         let btn = document.getElementById('btn-'+k); if(!btn) continue;
@@ -253,7 +259,6 @@ function updateUI() {
         document.getElementById('tag-'+k).textContent = "+" + tc; document.getElementById('tag-'+k).style.display = tc > 0 ? "block" : "none";
     }
 
-    // Shroom/Ascend buttons
     let ms = 3000 * Math.pow(1.2, mushrooms), ts = spores, mc = 0;
     while(ts >= ms) { ts -= ms; mc++; ms = 3000 * Math.pow(1.2, mushrooms + mc); }
     document.getElementById('tag-mushrooms').textContent = "+" + mc;
@@ -276,6 +281,8 @@ async function saveGame(indicator) {
     if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => document.getElementById('saveStatus').style.opacity = "0", 2000); }
 }
 
+function hardReset() { if(confirm("Hard reset? (Keeps PayPal Boosts & Ascensions)")) { spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0; frenzyCooldown = 0; for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); location.reload(); } }
+
 function initGame() {
     const container = document.getElementById('upgradeContainer');
     for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; }
@@ -285,20 +292,13 @@ function initGame() {
         spores = saved.spores || 0; mushrooms = saved.mushrooms || 0; ascensionTimes = saved.ascensionTimes || 0; pName = saved.pName || ""; 
         premiumBoostAdd = saved.premiumBoostAdd || 0; playerLvl = saved.playerLvl || 1; playerXP = saved.playerXP || 0;
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0;
-
-        let now = Date.now();
-        let gap = (now - (saved.lastTime || now)) / 1000;
-        
-        // Calculate Offline Earnings
-        let sps = getSPS();
-        let earned = sps * gap;
+        let now = Date.now(), gap = (now - (saved.lastTime || now)) / 1000;
+        let earned = getSPS() * gap;
         if (earned > 0) {
-            spores += earned;
-            addXP(earned * 0.1);
+            spores += earned; addXP(earned * 0.1);
             document.getElementById('offlineGain').textContent = "+" + format(earned);
             document.getElementById('offlineModal').style.display = 'flex';
         }
-
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
     }
@@ -329,7 +329,6 @@ paypal.Buttons({
     onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) 
 }).render('#paypal-button-container');
 
-// PWA
 let dp; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); dp = e; document.getElementById('installBtn').style.display = 'block'; });
 async function installApp() { if (dp) { dp.prompt(); const { outcome } = await dp.userChoice; if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none'; dp = null; } }
 </script>
