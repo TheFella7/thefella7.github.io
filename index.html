@@ -124,24 +124,6 @@
         <button id="installBtn" onclick="installApp()">📲 INSTALL APP</button>
     </div>
 
-    <div class="card">
-        <h3>📖 How to Play</h3>
-        <ul class="info-list">
-            <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
-            <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
-            <li><b>Frenzy Mode:</b> Reach enough clicks to trigger a 5x boost for 15 seconds!</li>
-            <li><b>Ascend:</b> Once you have enough Shrooms, Ascend to gain a permanent multiplier.</li>
-        </ul>
-    </div>
-
-    <div class="card">
-        <div class="stat-row"><span>Total Mushrooms:</span> <b id="mushroomsUI">0</b></div>
-        <div class="stat-row"><span>Total Ascensions:</span> <b id="ascCountUI">0</b></div>
-        <div class="stat-row" style="color:var(--cyan); border-top: 1px solid #444; margin-top: 8px; padding-top: 8px;">
-            <span>Total Multiplier:</span> <b id="totalMultUI">x1.00</b>
-        </div>
-    </div>
-
     <div id="upgradeContainer" class="upgrade-grid"></div>
 
     <div class="upgrade-grid">
@@ -171,21 +153,9 @@
     </div>
 
     <div class="card">
-        <h3>✨ Game Features</h3>
-        <ul class="info-list">
-            <li><b>Global Leaderboard:</b> Compete with shroomers worldwide.</li>
-            <li><b>Offline Progress:</b> Earn spores even while you are away.</li>
-            <li><b>Cloud Saving:</b> Your progress is backed up automatically.</li>
-            <li><b>PWA Support:</b> Install as an app on your home screen!</li>
-        </ul>
-    </div>
-
-    <div class="card">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan); text-align: center;">WORLD RANKINGS</p>
         <div id="leaderboardList">Syncing...</div>
     </div>
-
-    <div class="ad-slot" style="min-height: 250px;">ADVERTISEMENT SLOT #2</div>
     
     <button class="hard-reset-btn" onclick="hardReset()">HARD RESET PROGRESS</button>
 </main>
