@@ -22,7 +22,6 @@
         #title { font-size: 1.4em; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); margin: 0; }
         #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; }
         
-        /* New Clock and Save Status layout */
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
@@ -53,7 +52,7 @@
         .stat-row { display: flex; justify-content: space-between; padding: 5px 10px; font-size: 0.9em; }
         .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
         .btn-group { display: flex; flex-direction: column; position: relative; }
-        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); }
+        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); line-height: 1.2; }
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; color: #000; cursor: pointer; }
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
@@ -176,6 +175,9 @@
 
     <div class="card">
         <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan); text-align: center;">WORLD RANKINGS</p>
+        <div class="lb-row" style="border-bottom: 2px solid var(--neon); font-weight: bold; color: var(--gold); margin-bottom: 5px;">
+            <span>#</span><span>Player</span><span>LVL</span><span>ASC</span>
+        </div>
         <div id="leaderboardList">Syncing...</div>
     </div>
 
@@ -195,7 +197,6 @@
 <script src="https://www.paypal.com/sdk/js?client-id=AbbfCLxvNQy-PX0DlSdJarGZAHF5fPXVcO0fWdYL56bqdYQTYm2iSGbg04JQnwGGst8JYhKJcodERjC0&currency=GBP&disable-funding=credit,card"></script>
 
 <script>
-// --- SYSTEM ---
 const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false;
@@ -228,7 +229,6 @@ function addXP(amount) {
     while (playerXP >= getNextXP()) { playerXP -= getNextXP(); playerLvl++; }
 }
 
-// LIVE CLOCK FUNCTION
 function updateClock() {
     const now = new Date();
     document.getElementById('liveClock').textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString();
@@ -318,17 +318,27 @@ function updateUI() {
         document.getElementById('tag-'+k).textContent = "+" + tc; document.getElementById('tag-'+k).style.display = tc > 0 ? "block" : "none";
     }
 
-    let ms = 3000 * Math.pow(1.2, mushrooms), ts = spores, mc = 0;
+    // UPDATED BUY MUSHROOM VISUALS
+    let mushCost = 3000 * Math.pow(1.2, mushrooms);
+    let mBtn = document.getElementById('buyMushroomBtn');
+    mBtn.innerHTML = `Buy Shroom (${mushrooms})<br>${format(mushCost)}`;
+    mBtn.disabled = spores < mushCost;
+    
+    let ts = spores, mc = 0, ms = mushCost;
     while(ts >= ms) { ts -= ms; mc++; ms = 3000 * Math.pow(1.2, mushrooms + mc); }
     document.getElementById('tag-mushrooms').textContent = "+" + mc;
     document.getElementById('tag-mushrooms').style.display = mc > 0 ? "block" : "none";
-    document.getElementById('buyMushroomBtn').disabled = spores < (3000 * Math.pow(1.2, mushrooms));
 
-    let as = 50 * Math.pow(1.08, ascensionTimes), ta = mushrooms, ac = 0;
+    // UPDATED ASCEND VISUALS
+    let ascCost = 50 * Math.pow(1.08, ascensionTimes);
+    let aBtn = document.getElementById('ascendBtn');
+    aBtn.innerHTML = `Ascend (${ascensionTimes})<br>${format(ascCost)} Shrooms`;
+    aBtn.disabled = mushrooms < ascCost;
+    
+    let ta = mushrooms, ac = 0, as = ascCost;
     while(ta >= as) { ta -= as; ac++; as = 50 * Math.pow(1.08, ascensionTimes + ac); }
     document.getElementById('tag-ascend').textContent = "+" + ac;
     document.getElementById('tag-ascend').style.display = ac > 0 ? "block" : "none";
-    document.getElementById('ascendBtn').disabled = mushrooms < (50 * Math.pow(1.08, ascensionTimes));
 }
 
 async function saveGame(indicator) {
@@ -341,10 +351,7 @@ async function saveGame(indicator) {
     };
     
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
-    
-    // Separate Save Timestamp
-    const saveDateObj = new Date(saveTime);
-    document.getElementById('lastSavedTime').textContent = saveDateObj.toLocaleTimeString();
+    document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
 
     try { 
         await supabaseClient.from('leaderboard').upsert({ 
@@ -382,11 +389,7 @@ function initGame() {
         }
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
-        
-        if(saved.lastTime) {
-            const dateObj = new Date(saved.lastTime);
-            document.getElementById('lastSavedTime').textContent = dateObj.toLocaleTimeString();
-        }
+        if(saved.lastTime) document.getElementById('lastSavedTime').textContent = new Date(saved.lastTime).toLocaleTimeString();
     }
     
     if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; }
@@ -415,7 +418,20 @@ function closeOfflineModal() { document.getElementById('offlineModal').style.dis
 function confirmUsername() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } }
 async function fetchChat() { try { const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(15); if (data) document.getElementById('chatContainer').innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); } catch(e) {} }
 async function sendChatMessage() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } }
-async function loadLeaderboard() { try { const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${p.level}</span><span>${p.ascensions}</span></div>`).join(''); } catch(e) {} }
+
+// UPDATED LEADERBOARD DISPLAY
+async function loadLeaderboard() { 
+    try { 
+        const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
+        if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `
+            <div class="lb-row">
+                <span>${i+1}</span>
+                <span style="overflow:hidden; text-overflow:ellipsis;">${p.username}</span>
+                <span style="color:var(--xp)">${p.level}</span>
+                <span style="color:var(--neon)">${p.ascensions}</span>
+            </div>`).join(''); 
+    } catch(e) {} 
+}
 
 paypal.Buttons({ 
     style: { shape: 'pill', color: 'gold', height: 40 }, 
