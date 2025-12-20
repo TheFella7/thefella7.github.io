@@ -11,6 +11,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0118">
 
+    <meta property="og:title" content="Shrooms Bloom Idle">
+    <meta property="og:description" content="Build your fungal empire! Join thousands of shroomers worldwide.">
+    <meta property="og:url" content="https://thefella7.github.io/">
+    <meta property="og:type" content="website">
+
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
     <title>🍄 ShroomsBloomIdle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -301,7 +306,6 @@ function updateUI() {
         document.getElementById('tag-'+k).textContent = "+" + tc; document.getElementById('tag-'+k).style.display = tc > 0 ? "block" : "none";
     }
 
-    // UPDATED: Standardized Mushroom and Ascend UI
     let mCost = 3000 * Math.pow(1.2, mushrooms);
     document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br>${format(mCost)}`;
     document.getElementById('buyMushroomBtn').disabled = spores < mCost;
