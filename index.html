@@ -240,13 +240,13 @@ function clickMushroom(e) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
-    // FIX: Trigger Frenzy if ready, or RESET timer to 15s if already active
+    // Trigger Frenzy or Reset Timer
     if (frenzyCooldown <= 0 && !isFrenzyActive) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
         el.classList.add("shroom-frenzy-active"); 
     } else if (isFrenzyActive) {
-        frenzyTimer = 15; // Reset timer on click during frenzy
+        frenzyTimer = 15; // Reset the 15s timer on every click
     }
     
     let gain = 1 * getTotalMult(); 
@@ -305,8 +305,9 @@ function updateUI() {
         fFill.style.width = (frenzyTimer / 15 * 100) + "%"; 
     }
     else if (frenzyCooldown > 0) { 
-        fStatus.textContent = "COOLDOWN: " + Math.ceil(frenzyCooldown/60) + "m"; 
-        // FIX: Progress bar reflects 10 minute cooldown (600 seconds)
+        let mins = Math.floor(frenzyCooldown / 60);
+        let secs = Math.floor(frenzyCooldown % 60);
+        fStatus.textContent = "COOLDOWN: " + mins + "m " + (secs < 10 ? "0" + secs : secs) + "s"; 
         fFill.style.width = (100 - (frenzyCooldown / 600 * 100)) + "%"; 
     }
     else { 
@@ -322,18 +323,16 @@ function updateUI() {
         document.getElementById('tag-'+k).textContent = "+" + tc; document.getElementById('tag-'+k).style.display = tc > 0 ? "block" : "none";
     }
 
-    // UPDATED BUY MUSHROOM VISUALS
     let mushCost = 3000 * Math.pow(1.2, mushrooms);
     let mBtn = document.getElementById('buyMushroomBtn');
     mBtn.innerHTML = `Buy Shroom (${mushrooms})<br>${format(mushCost)}`;
     mBtn.disabled = spores < mushCost;
     
-    let ts = spores, mc = 0, ms = mushCost;
-    while(ts >= ms) { ts -= ms; mc++; ms = 3000 * Math.pow(1.2, mushrooms + mc); }
+    let ts_m = spores, mc = 0, ms = mushCost;
+    while(ts_m >= ms) { ts_m -= ms; mc++; ms = 3000 * Math.pow(1.2, mushrooms + mc); }
     document.getElementById('tag-mushrooms').textContent = "+" + mc;
     document.getElementById('tag-mushrooms').style.display = mc > 0 ? "block" : "none";
 
-    // UPDATED ASCEND VISUALS
     let ascCost = 50 * Math.pow(1.08, ascensionTimes);
     let aBtn = document.getElementById('ascendBtn');
     aBtn.innerHTML = `Ascend (${ascensionTimes})<br>${format(ascCost)} Shrooms`;
@@ -367,9 +366,6 @@ async function saveGame(indicator) {
     if(indicator) { 
         document.getElementById('saveStatus').style.opacity = "1"; 
         setTimeout(() => document.getElementById('saveStatus').style.opacity = "0", 2000); 
-    } else {
-        document.getElementById('saveStatus').style.opacity = "1";
-        setTimeout(() => document.getElementById('saveStatus').style.opacity = "0.5", 1000);
     }
 }
 
@@ -384,15 +380,19 @@ function initGame() {
         spores = saved.spores || 0; mushrooms = saved.mushrooms || 0; ascensionTimes = saved.ascensionTimes || 0; pName = saved.pName || ""; 
         premiumBoostAdd = saved.premiumBoostAdd || 0; playerLvl = saved.playerLvl || 1; playerXP = saved.playerXP || 0;
         if(saved.upgradeQtys) for(let k in upgrades) upgrades[k].qty = saved.upgradeQtys[k] || 0;
-        let now = Date.now(), gap = (now - (saved.lastTime || now)) / 1000;
+        
+        let now = Date.now();
+        let gap = (now - (saved.lastTime || now)) / 1000;
+        
+        // Offline Gains
         let earned = getSPS() * gap;
         if (earned > 0) {
             spores += earned; addXP(earned * 0.1);
             document.getElementById('offlineGain').textContent = "+" + format(earned);
             document.getElementById('offlineModal').style.display = 'flex';
         }
-        
-        // FIX: Recalculate frenzyCooldown based on actual time passed since last save
+
+        // COOLDOWN PERSISTENCE FIX
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
         
@@ -404,20 +404,33 @@ function initGame() {
 
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
+        
         if (isFrenzyActive) { 
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 600; // FIX: Changed cooldown to 10 minutes (600s)
+                frenzyCooldown = 600; // 10 Minute Cooldown
                 document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
+                saveGame(false); // Force save exactly when cooldown starts
             } 
         }
-        else if (frenzyCooldown > 0) frenzyCooldown -= dt;
+        else if (frenzyCooldown > 0) {
+            frenzyCooldown -= dt;
+            if (frenzyCooldown < 0) frenzyCooldown = 0;
+        }
+
         let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
-        autoSaveCounter += dt; if (autoSaveCounter >= 15) { saveGame(false); autoSaveCounter = 0; }
+        
+        autoSaveCounter += dt; 
+        if (autoSaveCounter >= 15) { 
+            saveGame(false); 
+            autoSaveCounter = 0; 
+        }
         updateUI();
     }, 100);
-    setInterval(fetchChat, 4000); setInterval(loadLeaderboard, 10000);
+
+    setInterval(fetchChat, 4000); 
+    setInterval(loadLeaderboard, 10000);
     updateClock();
 }
 
@@ -426,7 +439,6 @@ function confirmUsername() { let i = document.getElementById('playerNameInput').
 async function fetchChat() { try { const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(15); if (data) document.getElementById('chatContainer').innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); } catch(e) {} }
 async function sendChatMessage() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } }
 
-// UPDATED LEADERBOARD DISPLAY
 async function loadLeaderboard() { 
     try { 
         const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
