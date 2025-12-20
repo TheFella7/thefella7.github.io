@@ -240,10 +240,13 @@ function clickMushroom(e) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
+    // FIX: Trigger Frenzy if ready, or RESET timer to 15s if already active
     if (frenzyCooldown <= 0 && !isFrenzyActive) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
         el.classList.add("shroom-frenzy-active"); 
+    } else if (isFrenzyActive) {
+        frenzyTimer = 15; // Reset timer on click during frenzy
     }
     
     let gain = 1 * getTotalMult(); 
@@ -303,7 +306,8 @@ function updateUI() {
     }
     else if (frenzyCooldown > 0) { 
         fStatus.textContent = "COOLDOWN: " + Math.ceil(frenzyCooldown/60) + "m"; 
-        fFill.style.width = (100 - (frenzyCooldown / 1800 * 100)) + "%"; 
+        // FIX: Progress bar reflects 10 minute cooldown (600 seconds)
+        fFill.style.width = (100 - (frenzyCooldown / 600 * 100)) + "%"; 
     }
     else { 
         fStatus.textContent = "READY TO FRENZY"; 
@@ -387,8 +391,11 @@ function initGame() {
             document.getElementById('offlineGain').textContent = "+" + format(earned);
             document.getElementById('offlineModal').style.display = 'flex';
         }
+        
+        // FIX: Recalculate frenzyCooldown based on actual time passed since last save
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
+        
         if(saved.lastTime) document.getElementById('lastSavedTime').textContent = new Date(saved.lastTime).toLocaleTimeString();
     }
     
@@ -401,7 +408,7 @@ function initGame() {
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 1800;
+                frenzyCooldown = 600; // FIX: Changed cooldown to 10 minutes (600s)
                 document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
             } 
         }
