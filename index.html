@@ -240,12 +240,13 @@ function clickMushroom(e) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
+    // Trigger Frenzy or Reset Timer
     if (frenzyCooldown <= 0 && !isFrenzyActive) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
         el.classList.add("shroom-frenzy-active"); 
     } else if (isFrenzyActive) {
-        frenzyTimer = 15;
+        frenzyTimer = 15; // Reset the 15s timer on every click
     }
     
     let gain = 1 * getTotalMult(); 
@@ -368,12 +369,17 @@ async function saveGame(indicator) {
     }
 }
 
-function hardReset() { 
+async function hardReset() { 
     if(confirm("Hard reset? (Keeps PayPal Boosts & Ascensions)")) { 
-        // 1. Clear Name
+        const oldName = pName;
+        // Remove from global leaderboard before clearing locally
+        if (oldName) {
+            try { 
+                await supabaseClient.from('leaderboard').delete().eq('username', oldName);
+            } catch(e) { console.error("Error removing old name:", e); }
+        }
+
         pName = ""; 
-        
-        // 2. Clear progress variables
         spores = 0; 
         mushrooms = 0; 
         playerLvl = 1; 
@@ -381,15 +387,13 @@ function hardReset() {
         frenzyCooldown = 0; 
         for (let k in upgrades) upgrades[k].qty = 0; 
         
-        // 3. Manually construct save object and push to localStorage to bypass the name-check in saveGame()
+        // Manual save to ensure name is empty on reload
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, 
             playerLvl, playerXP, frenzyCooldown, lastTime: Date.now(), 
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
         localStorage.setItem("shroom_save_v4", JSON.stringify(d));
-        
-        // 4. Reload the page to trigger the username entry screen
         location.reload(); 
     } 
 }
@@ -407,6 +411,7 @@ function initGame() {
         let now = Date.now();
         let gap = (now - (saved.lastTime || now)) / 1000;
         
+        // Offline Gains
         let earned = getSPS() * gap;
         if (earned > 0) {
             spores += earned; addXP(earned * 0.1);
@@ -414,6 +419,7 @@ function initGame() {
             document.getElementById('offlineModal').style.display = 'flex';
         }
 
+        // COOLDOWN PERSISTENCE FIX
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
         
@@ -430,9 +436,9 @@ function initGame() {
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 600; 
+                frenzyCooldown = 600; // 10 Minute Cooldown
                 document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
-                saveGame(false); 
+                saveGame(false); // Force save exactly when cooldown starts
             } 
         }
         else if (frenzyCooldown > 0) {
