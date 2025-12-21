@@ -62,6 +62,7 @@
         button:disabled { opacity: 0.3; filter: grayscale(1); }
         
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
+        .restore-btn { background: #555; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
         .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
         
         .info-list { font-size: 0.85em; padding-left: 15px; margin: 10px 0; }
@@ -125,6 +126,7 @@
     
     <div style="display: flex; justify-content: center; flex-wrap: wrap;">
         <button class="manual-save-btn" onclick="saveGame(true)">💾 MANUAL SAVE</button>
+        <button class="restore-btn" onclick="restorePurchases()">🔄 RESTORE PURCHASES</button>
         <button id="installBtn" onclick="installApp()">📲 INSTALL APP</button>
     </div>
 
@@ -372,7 +374,6 @@ function updateUI() {
     if(getEl('spores')) getEl('spores').textContent = format(spores);
     if(getEl('rate')) getEl('rate').textContent = format(getSPS());
     
-    // UI Fix: Math.floor prevents long decimals in displays
     if(getEl('mushroomsUI')) getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
     if(getEl('ascCountUI')) getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes));
     
@@ -404,7 +405,6 @@ function updateUI() {
     for (let k in upgrades) {
         let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
         let btn = getEl('btn-'+k); if(!btn) continue;
-        // Fix: Math.floor(u.qty) ensures the brackets show clean numbers
         btn.innerHTML = `${u.name} (${Math.floor(u.qty)})<br><span class="btn-cost">${format(cost)}</span>`; 
         btn.disabled = spores < cost;
         
@@ -419,7 +419,6 @@ function updateUI() {
 
     let mushCost = 3000 * Math.pow(1.2, mushrooms);
     if(getEl('buyMushroomBtn')) {
-        // Fix: Math.floor(mushrooms) for bracket display
         getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${Math.floor(mushrooms)})<br><span class="btn-cost">${format(mushCost)}</span>`;
         getEl('buyMushroomBtn').disabled = spores < mushCost;
     }
@@ -433,7 +432,6 @@ function updateUI() {
 
     let ascCost = 50 * Math.pow(1.08, ascensionTimes);
     if(getEl('ascendBtn')) {
-        // Fix: Math.floor(ascensionTimes) for bracket display
         getEl('ascendBtn').innerHTML = `Ascend (${Math.floor(ascensionTimes)})<br><span class="btn-cost">${format(ascCost)} Shrooms</span>`;
         getEl('ascendBtn').disabled = mushrooms < ascCost;
     }
@@ -461,7 +459,8 @@ async function saveGame(indicator) {
     try { 
         await supabaseClient.from('leaderboard').upsert({ 
             username: pName, spores: Math.floor(spores), 
-            ascensions: ascensionTimes, level: playerLvl 
+            ascensions: ascensionTimes, level: playerLvl,
+            premium_boost: premiumBoostAdd // Saving boost to cloud
         }, { onConflict: 'username' }); 
     } catch(e) { console.warn("Cloud save issue"); }
     
@@ -471,11 +470,45 @@ async function saveGame(indicator) {
     }
 }
 
+// Updated Hard Reset: Keeps Multipliers/Ascensions & Allows Name Change
 async function hardReset() { 
-    if(confirm("Hard reset? (Resets everything except Name)")) { 
+    if(confirm("Reset progress? This keeps your PayPal Boosts and Ascensions, but lets you change your name and resets Spores/Level.")) { 
+        const savedBoost = premiumBoostAdd;
+        const savedAscensions = ascensionTimes;
         localStorage.removeItem("shroom_save_v4");
-        location.reload(); 
+        
+        spores = 0;
+        playerLvl = 1;
+        playerXP = 0;
+        frenzyClicks = 0;
+        for (let k in upgrades) upgrades[k].qty = 0;
+        
+        premiumBoostAdd = savedBoost;
+        ascensionTimes = savedAscensions;
+        pName = ""; 
+        document.getElementById('usernameOverlay').style.display = 'flex';
+        document.getElementById('playerNameInput').value = "";
+        
+        saveGame(true);
+        updateUI();
+        alert("Progress reset! You can now choose a new name.");
     } 
+}
+
+// Restore Function: Checks Cloud for premium boost linked to Name
+async function restorePurchases() {
+    if(!pName) return alert("Please enter your name first.");
+    try {
+        const { data, error } = await supabaseClient.from('leaderboard').select('premium_boost').eq('username', pName).single();
+        if (data && data.premium_boost > 0) {
+            premiumBoostAdd = data.premium_boost;
+            saveGame(true);
+            updateUI();
+            alert("Success! Restored boost: +" + premiumBoostAdd);
+        } else {
+            alert("No cloud record of purchases found for this name.");
+        }
+    } catch(e) { alert("Restore failed. Check connection."); }
 }
 
 function initGame() {
