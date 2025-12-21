@@ -234,7 +234,7 @@ function getNextXP() { return Math.floor(100 * Math.pow(1.5, playerLvl - 1)); }
 function getTotalMult() { return (1 + premiumBoostAdd + (ascensionTimes * 1.0)) * (isFrenzyActive ? 5 : 1); }
 function getSPS() {
     let s = 0; for (let k in upgrades) s += (upgrades[k].qty * upgrades[k].rate);
-    return s * getTotalMult();
+    return s * (1 + premiumBoostAdd + (ascensionTimes * 1.0)) * (isFrenzyActive ? 5 : 1);
 }
 function addXP(amount) {
     playerXP += amount;
@@ -324,7 +324,6 @@ function updateUI() {
     }
     else { fStatus.textContent = "READY TO FRENZY"; fFill.style.width = "100%"; }
 
-    // Update u1-u6 Tags
     for (let k in upgrades) {
         let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
         let btn = document.getElementById('btn-'+k); if(!btn) continue;
@@ -333,14 +332,12 @@ function updateUI() {
         document.getElementById('tag-'+k).textContent = "+" + tc; document.getElementById('tag-'+k).style.display = tc > 0 ? "block" : "none";
     }
 
-    // Fix: Update Mushroom Tags
     let mushCost = 3000 * Math.pow(1.2, mushrooms);
     document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br>${format(mushCost)}`;
     document.getElementById('buyMushroomBtn').disabled = spores < mushCost;
     let ms = spores, mc = 0, mn = mushCost; while(ms >= mn) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
     document.getElementById('tag-mushrooms').textContent = "+" + mc; document.getElementById('tag-mushrooms').style.display = mc > 0 ? "block" : "none";
 
-    // Fix: Update Ascend Tags
     let ascCost = 50 * Math.pow(1.08, ascensionTimes);
     document.getElementById('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br>${format(ascCost)} Shrooms`;
     document.getElementById('ascendBtn').disabled = mushrooms < ascCost;
@@ -448,3 +445,4 @@ async function installApp() { if (dp) { dp.prompt(); const { outcome } = await d
 </script>
 </body>
 </html>
+
