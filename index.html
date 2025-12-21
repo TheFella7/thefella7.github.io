@@ -53,7 +53,7 @@
         .stat-row { display: flex; justify-content: space-between; padding: 5px 10px; font-size: 0.9em; }
         .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
         .btn-group { display: flex; flex-direction: column; position: relative; }
-        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); line-height: 1.2; }
+        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); line-height: 1.2; min-height: 50px; }
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; color: #000; cursor: pointer; }
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
@@ -70,6 +70,8 @@
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
+        
+        .btn-cost { font-size: 0.9em; opacity: 0.9; display: block; margin-top: 2px; }
     </style>
 </head>
 <body onload="initGame()">
@@ -249,7 +251,6 @@ function addXP(amount) {
     if (isNaN(amount) || amount <= 0) return;
     playerXP += amount;
     let next = getNextXP();
-    // Safety break to prevent infinite loops if XP gain is massive
     let safety = 0;
     while (playerXP >= next && playerLvl < 1000000 && safety < 100) { 
         playerXP -= next; 
@@ -274,17 +275,16 @@ function clickMushroom(e) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
-    // Frenzy Logic Fix
     if (!isFrenzyActive && frenzyCooldown <= 0) {
         frenzyClicks++;
-        if (frenzyClicks >= 50) { // Trigger after 50 clicks
+        if (frenzyClicks >= 50) { 
             isFrenzyActive = true;
             frenzyTimer = 15;
             frenzyClicks = 0;
             el.classList.add("shroom-frenzy-active");
         }
     } else if (isFrenzyActive) {
-        frenzyTimer = Math.min(frenzyTimer + 0.2, 15); // Clicking slightly extends frenzy
+        frenzyTimer = Math.min(frenzyTimer + 0.2, 15);
     }
     
     let gain = 1 * getTotalMult(); 
@@ -401,7 +401,8 @@ function updateUI() {
     for (let k in upgrades) {
         let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
         let btn = getEl('btn-'+k); if(!btn) continue;
-        btn.innerHTML = `${u.name} (${u.qty})<br>${format(cost)}`; btn.disabled = spores < cost;
+        btn.innerHTML = `${u.name} (${u.qty})<br><span class="btn-cost">${format(cost)}</span>`; 
+        btn.disabled = spores < cost;
         
         let ts = spores, tc = 0, n = cost; 
         while(ts >= n && tc < 1000) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
@@ -414,7 +415,7 @@ function updateUI() {
 
     let mushCost = 3000 * Math.pow(1.2, mushrooms);
     if(getEl('buyMushroomBtn')) {
-        getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br>${format(mushCost)}`;
+        getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br><span class="btn-cost">${format(mushCost)}</span>`;
         getEl('buyMushroomBtn').disabled = spores < mushCost;
     }
     let ms = spores, mc = 0, mn = mushCost; 
@@ -426,7 +427,7 @@ function updateUI() {
 
     let ascCost = 50 * Math.pow(1.08, ascensionTimes);
     if(getEl('ascendBtn')) {
-        getEl('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br>${format(ascCost)} Shrooms`;
+        getEl('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br><span class="btn-cost">${format(ascCost)} Shrooms</span>`;
         getEl('ascendBtn').disabled = mushrooms < ascCost;
     }
     let as = mushrooms, ac = 0, an = ascCost; 
@@ -512,7 +513,7 @@ function initGame() {
 
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; 
-        if(dt > 2) dt = 1; // Prevent massive jumps if tab was frozen
+        if(dt > 2) dt = 1;
         lastUpdate = now;
         
         if (isFrenzyActive) { 
