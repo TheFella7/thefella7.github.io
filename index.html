@@ -240,13 +240,12 @@ function clickMushroom(e) {
     el.classList.add('shroom-click');
     setTimeout(() => el.classList.remove('shroom-click'), 50);
     
-    // Trigger Frenzy or Reset Timer
     if (frenzyCooldown <= 0 && !isFrenzyActive) { 
         isFrenzyActive = true; 
         frenzyTimer = 15; 
         el.classList.add("shroom-frenzy-active"); 
     } else if (isFrenzyActive) {
-        frenzyTimer = 15; // Reset the 15s timer on every click
+        frenzyTimer = 15; 
     }
     
     let gain = 1 * getTotalMult(); 
@@ -372,11 +371,12 @@ async function saveGame(indicator) {
 async function hardReset() { 
     if(confirm("Hard reset? (Keeps PayPal Boosts & Ascensions)")) { 
         const oldName = pName;
-        // Remove from global leaderboard before clearing locally
+        
         if (oldName) {
-            try { 
-                await supabaseClient.from('leaderboard').delete().eq('username', oldName);
-            } catch(e) { console.error("Error removing old name:", e); }
+            // Await the deletion from Supabase
+            await supabaseClient.from('leaderboard').delete().eq('username', oldName);
+            // Manually refresh the local leaderboard list UI just in case
+            await loadLeaderboard();
         }
 
         pName = ""; 
@@ -387,13 +387,14 @@ async function hardReset() {
         frenzyCooldown = 0; 
         for (let k in upgrades) upgrades[k].qty = 0; 
         
-        // Manual save to ensure name is empty on reload
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, 
             playerLvl, playerXP, frenzyCooldown, lastTime: Date.now(), 
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
         localStorage.setItem("shroom_save_v4", JSON.stringify(d));
+        
+        // Final sanity check before reload
         location.reload(); 
     } 
 }
@@ -411,7 +412,6 @@ function initGame() {
         let now = Date.now();
         let gap = (now - (saved.lastTime || now)) / 1000;
         
-        // Offline Gains
         let earned = getSPS() * gap;
         if (earned > 0) {
             spores += earned; addXP(earned * 0.1);
@@ -419,7 +419,6 @@ function initGame() {
             document.getElementById('offlineModal').style.display = 'flex';
         }
 
-        // COOLDOWN PERSISTENCE FIX
         frenzyCooldown = (saved.frenzyCooldown || 0) - gap;
         if (frenzyCooldown < 0) frenzyCooldown = 0;
         
@@ -436,9 +435,9 @@ function initGame() {
             frenzyTimer -= dt; 
             if (frenzyTimer <= 0) { 
                 isFrenzyActive = false; 
-                frenzyCooldown = 600; // 10 Minute Cooldown
+                frenzyCooldown = 600; 
                 document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
-                saveGame(false); // Force save exactly when cooldown starts
+                saveGame(false); 
             } 
         }
         else if (frenzyCooldown > 0) {
@@ -459,6 +458,7 @@ function initGame() {
     setInterval(fetchChat, 4000); 
     setInterval(loadLeaderboard, 10000);
     updateClock();
+    loadLeaderboard();
 }
 
 function closeOfflineModal() { document.getElementById('offlineModal').style.display = 'none'; saveGame(true); }
@@ -469,14 +469,16 @@ async function sendChatMessage() { const input = document.getElementById('chatIn
 async function loadLeaderboard() { 
     try { 
         const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
-        if (data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `
-            <div class="lb-row">
-                <span>${i+1}</span>
-                <span style="overflow:hidden; text-overflow:ellipsis;">${p.username}</span>
-                <span style="color:var(--xp)">${p.level}</span>
-                <span style="color:var(--neon)">${p.ascensions}</span>
-            </div>`).join(''); 
-    } catch(e) {} 
+        if (data) {
+            document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `
+                <div class="lb-row">
+                    <span>${i+1}</span>
+                    <span style="overflow:hidden; text-overflow:ellipsis;">${p.username}</span>
+                    <span style="color:var(--xp)">${p.level}</span>
+                    <span style="color:var(--neon)">${p.ascensions}</span>
+                </div>`).join(''); 
+        }
+    } catch(e) { console.error("Leaderboard error:", e); } 
 }
 
 paypal.Buttons({ 
