@@ -391,7 +391,7 @@ function updateUI() {
     const fFill = getEl('frenzyFill');
     if (fStatus && fFill) {
         if (isFrenzyActive) { 
-            fStatus.textContent = "FRENZY! (" + Math.ceil(frenzyTimer) + "s)"; 
+            fStatus.textContent = "FRENZY x5 Multiplier Active (" + Math.ceil(frenzyTimer) + "s)"; 
             fFill.style.width = Math.max(0, (frenzyTimer / 15 * 100)) + "%"; 
         }
         else if (frenzyCooldown > 0) { 
@@ -471,7 +471,6 @@ async function saveGame(indicator) {
     }
 }
 
-// CRITICAL: Final save before window closes
 window.addEventListener('beforeunload', () => saveGame(false));
 
 async function restorePurchases() {
@@ -535,7 +534,6 @@ function initGame() {
         playerXP = saved.playerXP || 0;
         frenzyCooldown = saved.frenzyCooldown || 0;
         
-        // Deep Merge upgrades to prevent loss if new upgrades are added to the code
         if(saved.upgradeQtys) {
             for(let k in upgrades) {
                 if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = saved.upgradeQtys[k];
@@ -564,7 +562,7 @@ function initGame() {
 
     setInterval(() => {
         let now = Date.now(), dt = (now - lastUpdate) / 1000; 
-        if(dt > 2 || dt < 0) dt = 0.1; // Fixes time-warp bugs or tab sleep issues
+        if(dt > 2 || dt < 0) dt = 0.1;
         lastUpdate = now;
         
         if (isFrenzyActive) { 
