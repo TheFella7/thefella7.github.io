@@ -9,9 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0118">
-
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
-    
     <title>🍄 ShroomsBloomIdle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
@@ -166,9 +164,6 @@ let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd =
 let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
 let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
 
-let userId = localStorage.getItem("shroom_user_id") || crypto.randomUUID();
-localStorage.setItem("shroom_user_id", userId);
-
 const upgrades = {
     u1: { name: "Spore Collector", base: 15, rate: 1, qty: 0, growth: 1.15 },
     u2: { name: "Fungal Patch", base: 150, rate: 10, qty: 0, growth: 1.15 },
@@ -192,8 +187,7 @@ function getNextXP() { return Math.floor(100 * Math.pow(1.5, Math.max(0, playerL
 function getTotalMult() { return (1 + (premiumBoostAdd || 0) + (ascensionTimes * 1.0)) * (isFrenzyActive ? 5 : 1); }
 
 function getSPS() {
-    let s = 0; 
-    for (let k in upgrades) { s += (upgrades[k].qty * upgrades[k].rate); }
+    let s = 0; for (let k in upgrades) s += (upgrades[k].qty * upgrades[k].rate);
     let finalSPS = s * getTotalMult();
     return isNaN(finalSPS) ? 0 : finalSPS;
 }
@@ -204,10 +198,7 @@ function addXP(amount) {
     let next = getNextXP();
     let safety = 0;
     while (playerXP >= next && playerLvl < 1000000 && safety < 100) { 
-        playerXP -= next; 
-        playerLvl++; 
-        next = getNextXP(); 
-        safety++; 
+        playerXP -= next; playerLvl++; next = getNextXP(); safety++; 
     }
 }
 
@@ -310,27 +301,20 @@ function updateUI() {
         while(ts >= n && tc < 100) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
         let tag = getEl('tag-'+k); if(tag) { tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none"; }
     }
-
-    let mC = 3000 * Math.pow(1.2, mushrooms);
-    if(getEl('buyMushroomBtn')) { 
-        getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${Math.floor(mushrooms)})<br><span class="btn-cost">${format(mC)}</span>`; 
-        getEl('buyMushroomBtn').disabled = spores < mC; 
-    }
-    let aC = 50 * Math.pow(1.08, ascensionTimes);
-    if(getEl('ascendBtn')) { 
-        getEl('ascendBtn').innerHTML = `Ascend (${Math.floor(ascensionTimes)})<br><span class="btn-cost">${format(aC)} Shrooms</span>`; 
-        getEl('ascendBtn').disabled = mushrooms < aC; 
-    }
 }
 
 async function saveGame(indicator) {
     if (!pName) return;
     const saveTime = Date.now();
-    const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, userId, playerLvl, playerXP, frenzyCooldown, lastTime: saveTime, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
+    const d = { 
+        spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, 
+        playerLvl, playerXP, frenzyCooldown, lastTime: saveTime, 
+        upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
+    };
     localStorage.setItem("shroom_save_v4", JSON.stringify(d));
     if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
     try { 
-        await supabaseClient.from('leaderboard').upsert({ user_id: userId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, premium_boost: premiumBoostAdd }, { onConflict: 'user_id' }); 
+        await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, premium_boost: premiumBoostAdd }, { onConflict: 'username' }); 
     } catch(e) {}
     if(indicator && document.getElementById('saveStatus')) { 
         document.getElementById('saveStatus').style.opacity = "1"; 
