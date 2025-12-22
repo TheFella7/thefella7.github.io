@@ -63,6 +63,7 @@
         
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
         .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
+        .restore-btn { background: #333; color: var(--gold); border: 1px solid var(--gold); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8em; margin: 5px auto; display: block; }
         
         .info-list { font-size: 0.85em; padding-left: 15px; margin: 10px 0; }
         .info-list li { margin-bottom: 5px; color: #ccc; }
@@ -172,6 +173,7 @@
     <div class="card">
         <div id="paypal-button-container"></div>
         <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£1.69)</p>
+        <button class="restore-btn" onclick="restorePurchases()">Restore Multipliers</button>
     </div>
 
     <div class="card">
@@ -467,9 +469,54 @@ async function saveGame(indicator) {
     }
 }
 
+async function restorePurchases() {
+    try {
+        const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single();
+        if (data && !error) {
+            premiumBoostAdd = data.total_boost;
+            alert("Purchases restored! Multiplier updated.");
+            saveGame(true);
+            updateUI();
+        } else {
+            alert("No cloud purchases found for this name.");
+        }
+    } catch(e) { alert("Error connecting to server."); }
+}
+
 async function hardReset() { 
-    if(confirm("Hard reset? (Resets everything except Name)")) { 
+    if(confirm("Hard reset? This will reset all spores, levels, and upgrades. Permanent multipliers and Ascensions will remain.")) { 
+        const changeName = confirm("Would you like to change your name as well?");
+        
+        // Preserve values
+        const currentName = pName;
+        const currentPremium = premiumBoostAdd;
+        const currentAsc = ascensionTimes;
+
+        // Clear local storage
         localStorage.removeItem("shroom_save_v4");
+
+        // Reset variables
+        spores = 0;
+        mushrooms = 0;
+        playerLvl = 1;
+        playerXP = 0;
+        frenzyCooldown = 0;
+        frenzyTimer = 0;
+        isFrenzyActive = false;
+        for (let k in upgrades) upgrades[k].qty = 0;
+
+        // Restore preserved values
+        premiumBoostAdd = currentPremium;
+        ascensionTimes = currentAsc;
+
+        if (changeName) {
+            pName = "";
+            document.getElementById('usernameOverlay').style.display = 'flex';
+        } else {
+            pName = currentName;
+            saveGame(true);
+        }
+        
         location.reload(); 
     } 
 }
@@ -585,7 +632,17 @@ if(window.paypal) {
     paypal.Buttons({ 
         style: { shape: 'pill', color: 'gold', height: 40 }, 
         createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-        onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) 
+        onApprove: (d, a) => a.order.capture().then(async o => { 
+            if (o.status === "COMPLETED") { 
+                premiumBoostAdd += 20; 
+                saveGame(true); 
+                updateUI();
+                // Cloud backup of purchase
+                try {
+                    await supabaseClient.from('purchases').upsert({ username: pName, total_boost: premiumBoostAdd });
+                } catch(e){}
+            } 
+        }) 
     }).render('#paypal-button-container').catch(e => console.log("Paypal render error"));
 }
 
