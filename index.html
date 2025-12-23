@@ -254,6 +254,7 @@ function addXP(amount) {
     playerXP += amount;
     let next = getNextXP();
     let safety = 0;
+    // Safety check to prevent infinite loop or browser hang on huge XP gains
     while (playerXP >= next && playerLvl < 1000000 && safety < 100) { 
         playerXP -= next; 
         playerLvl++; 
@@ -308,10 +309,11 @@ function buyUpgrade(id, isMax = false) {
     if(!u) return;
     if (isMax) { 
         let safety = 0;
-        while (spores >= (u.base * Math.pow(u.growth, u.qty)) && safety < 1000) { 
-            let cost = u.base * Math.pow(u.growth, u.qty);
-            spores -= cost; 
+        let currentCost = u.base * Math.pow(u.growth, u.qty);
+        while (spores >= currentCost && safety < 1000) { 
+            spores -= currentCost; 
             u.qty++; 
+            currentCost = u.base * Math.pow(u.growth, u.qty);
             safety++;
         }
     } else { 
@@ -326,9 +328,11 @@ function buyMushroom(isMax) {
     const b = 3000, g = 1.2;
     if (isMax) { 
         let safety = 0;
-        while (spores >= (b * Math.pow(g, mushrooms)) && safety < 1000) { 
-            spores -= (b * Math.pow(g, mushrooms)); 
+        let currentCost = b * Math.pow(g, mushrooms);
+        while (spores >= currentCost && safety < 1000) { 
+            spores -= currentCost; 
             mushrooms++; 
+            currentCost = b * Math.pow(g, mushrooms);
             safety++;
         }
     } else { 
@@ -343,10 +347,13 @@ function ascend(isMax) {
     const b = 50, g = 1.08;
     let count = 0;
     if (isMax) {
-        while (mushrooms >= (b * Math.pow(g, ascensionTimes)) && count < 100) { 
-            mushrooms -= (b * Math.pow(g, ascensionTimes)); 
+        let currentCost = b * Math.pow(g, ascensionTimes);
+        // Explicitly check mushrooms >= cost to prevent exploit loop
+        while (mushrooms >= currentCost && count < 100) { 
+            mushrooms -= currentCost; 
             ascensionTimes++; 
             count++; 
+            currentCost = b * Math.pow(g, ascensionTimes);
         }
     } else { 
         let c = b * Math.pow(g, ascensionTimes); 
@@ -525,18 +532,18 @@ function initGame() {
     const savedRaw = localStorage.getItem("shroom_save_v4");
     if (savedRaw) {
         const saved = JSON.parse(savedRaw);
-        spores = saved.spores || 0; 
-        mushrooms = saved.mushrooms || 0; 
-        ascensionTimes = saved.ascensionTimes || 0; 
+        spores = Number(saved.spores) || 0; 
+        mushrooms = Number(saved.mushrooms) || 0; 
+        ascensionTimes = Number(saved.ascensionTimes) || 0; 
         pName = saved.pName || ""; 
-        premiumBoostAdd = saved.premiumBoostAdd || 0; 
-        playerLvl = saved.playerLvl || 1; 
-        playerXP = saved.playerXP || 0;
-        frenzyCooldown = saved.frenzyCooldown || 0;
+        premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; 
+        playerLvl = Number(saved.playerLvl) || 1; 
+        playerXP = Number(saved.playerXP) || 0;
+        frenzyCooldown = Number(saved.frenzyCooldown) || 0;
         
         if(saved.upgradeQtys) {
             for(let k in upgrades) {
-                if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = saved.upgradeQtys[k];
+                if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]);
             }
         }
         
