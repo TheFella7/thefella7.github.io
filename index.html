@@ -27,6 +27,8 @@
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
+        #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg); border: 2px solid var(--neon); padding: 30px; border-radius: 20px; max-width: 300px; box-shadow: 0 0 30px var(--neon); }
 
@@ -96,6 +98,7 @@
     <div id="saveStatus">SAVED <span id="lastSavedTime">--:--:--</span></div>
     <div id="title">🍄 SHROOMS BLOOM 🍄</div>
     <div id="displayUsername">Connecting...</div>
+    <div id="onlineCounter">Players Online: <span id="onlineNum">1</span></div>
     <div id="liveClock">Loading Date/Time...</div>
 </div>
 
@@ -254,7 +257,6 @@ function addXP(amount) {
     playerXP += amount;
     let next = getNextXP();
     let safety = 0;
-    // Safety check to prevent infinite loop or browser hang on huge XP gains
     while (playerXP >= next && playerLvl < 1000000 && safety < 100) { 
         playerXP -= next; 
         playerLvl++; 
@@ -348,7 +350,6 @@ function ascend(isMax) {
     let count = 0;
     if (isMax) {
         let currentCost = b * Math.pow(g, ascensionTimes);
-        // Explicitly check mushrooms >= cost to prevent exploit loop
         while (mushrooms >= currentCost && count < 100) { 
             mushrooms -= currentCost; 
             ascensionTimes++; 
@@ -382,10 +383,8 @@ function updateUI() {
     const getEl = (id) => document.getElementById(id);
     if(getEl('spores')) getEl('spores').textContent = format(spores);
     if(getEl('rate')) getEl('rate').textContent = format(getSPS());
-    
     if(getEl('mushroomsUI')) getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
     if(getEl('ascCountUI')) getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes));
-    
     if(getEl('totalMultUI')) getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
     if(getEl('lvlUI')) getEl('lvlUI').textContent = playerLvl;
     
@@ -466,16 +465,34 @@ async function saveGame(indicator) {
     if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
 
     try { 
+        // Heartbeat: update last_seen column so online count works
         await supabaseClient.from('leaderboard').upsert({ 
             username: pName, spores: Math.floor(spores), 
-            ascensions: ascensionTimes, level: playerLvl 
+            ascensions: ascensionTimes, level: playerLvl,
+            last_seen: new Date().toISOString() 
         }, { onConflict: 'username' }); 
+        fetchOnlineCount();
     } catch(e) { console.warn("Cloud save issue"); }
     
     if(indicator && document.getElementById('saveStatus')) { 
         document.getElementById('saveStatus').style.opacity = "1"; 
         setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); 
     }
+}
+
+async function fetchOnlineCount() {
+    try {
+        // Find players active within the last 60 seconds
+        const oneMinAgo = new Date(Date.now() - 60000).toISOString();
+        const { count, error } = await supabaseClient
+            .from('leaderboard')
+            .select('*', { count: 'exact', head: true })
+            .gt('last_seen', oneMinAgo);
+        
+        if (!error && count !== null) {
+            document.getElementById('onlineNum').textContent = count;
+        }
+    } catch(e) {}
 }
 
 window.addEventListener('beforeunload', () => saveGame(false));
@@ -594,8 +611,10 @@ function initGame() {
 
     setInterval(fetchChat, 5000); 
     setInterval(loadLeaderboard, 15000);
+    setInterval(fetchOnlineCount, 15000);
     updateClock();
     loadLeaderboard();
+    fetchOnlineCount();
 }
 
 function closeOfflineModal() { document.getElementById('offlineModal').style.display = 'none'; saveGame(true); }
