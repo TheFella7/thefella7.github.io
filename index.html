@@ -189,6 +189,7 @@
 
 <script>
 (function() {
+    // Supabase Credentials
     const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
@@ -329,15 +330,38 @@
         if(getEl('tag-ascend')) { let tagA = getEl('tag-ascend'); tagA.textContent = "+" + ac; tagA.style.display = ac > 0 ? "block" : "none"; }
     }
 
+    // FIX: Optimized Manual Save & Real-time Online Tracking
     window.saveGame = async function(indicator) {
         if (!pName) return;
-        if (getSPS() > 1e20 && playerLvl < 50) return; // Basic integrity check
+        if (getSPS() > 1e20 && playerLvl < 50) return; //
+        
         const saveTime = Date.now();
         const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, frenzyCooldown, lastTime: saveTime, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
+        
+        // Save to browser
         localStorage.setItem("shroom_save_v4", JSON.stringify(d));
-        if(getEl('lastSavedTime')) getEl('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
-        try { await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString() }, { onConflict: 'username' }); fetchOnlineCount(); } catch(e) { }
-        if(indicator && getEl('saveStatus')) { getEl('saveStatus').style.opacity = "1"; setTimeout(() => { if(getEl('saveStatus')) getEl('saveStatus').style.opacity = "0" }, 2000); }
+        
+        if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
+        
+        // Save to Supabase (Handles leaderboard and "Online" count)
+        try { 
+            await supabaseClient.from('leaderboard').upsert({ 
+                username: pName, 
+                spores: Math.floor(spores), 
+                ascensions: ascensionTimes, 
+                level: playerLvl, 
+                last_seen: new Date().toISOString() 
+            }, { onConflict: 'username' });
+            
+            // Refresh counts immediately after a manual or auto save
+            fetchOnlineCount(); 
+        } catch(e) { console.error("Save failed:", e); }
+        
+        // Visual indicator fix
+        if(indicator && document.getElementById('saveStatus')) { 
+            document.getElementById('saveStatus').style.opacity = "1"; 
+            setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); 
+        }
     };
 
     window.initGame = function() {
@@ -365,11 +389,32 @@
     };
 
     window.closeOfflineModal = function() { document.getElementById('offlineModal').style.display = 'none'; saveGame(true); };
-    window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } };
+    
+    // FIX: Trigger immediate save and online refresh when a player begins
+    window.confirmUsername = function() { 
+        let i = document.getElementById('playerNameInput').value.trim(); 
+        if (i.length >= 2) { 
+            pName = i; 
+            document.getElementById('usernameOverlay').style.display = 'none'; 
+            document.getElementById('displayUsername').textContent = "Shroomer: " + pName; 
+            saveGame(true); 
+            fetchOnlineCount();
+        } 
+    };
+
     window.fetchChat = async function() { try { const { data, error } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(10); if (data && !error) { const container = document.getElementById('chatContainer'); if(container) container.innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username || 'Anon'}:</b> ${m.message || ''}</div>`).join(''); } } catch(e) {} };
     window.sendChatMessage = async function() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { try { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } catch(e){} } };
     window.loadLeaderboard = async function() { try { const { data, error } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); if (data && !error) { const list = document.getElementById('leaderboardList'); if(list) list.innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username || 'Unknown'}</span><span style="color:var(--xp)">${p.level || 1}</span><span style="color:var(--neon)">${p.ascensions || 0}</span></div>`).join(''); } } catch(e) {} };
-    window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
+    
+    // FIX: Standard Online Count Logic
+    window.fetchOnlineCount = async function() { 
+        try { 
+            const oneMinAgo = new Date(Date.now() - 60000).toISOString(); 
+            const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); 
+            if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } 
+        } catch(e) {} 
+    };
+
     window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     window.hardReset = function() { if(confirm("Hard reset? Progress will be lost.")) { localStorage.removeItem("shroom_save_v4"); location.reload(); } };
 
