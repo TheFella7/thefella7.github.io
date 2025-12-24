@@ -49,8 +49,22 @@
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
         #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
         .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.85em; align-items: center; }
-        /* Fix for TagError: Specified minimum sizes for ad slots */
-        .ad-slot { min-width: 250px; min-height: 100px; margin: 20px auto; max-width: 450px; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; }
+        
+        /* FIX: Explicitly set minimum dimensions for Ad Containers to prevent availableWidth=0 */
+        .ad-slot { 
+            min-height: 100px; 
+            min-width: 320px; 
+            margin: 20px auto; 
+            max-width: 450px; 
+            background: rgba(255,255,255,0.02); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px dashed rgba(255,255,255,0.1); 
+            border-radius: 12px; 
+            overflow: hidden;
+        }
+
         button:disabled { opacity: 0.3; filter: grayscale(1); }
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
         .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
@@ -103,7 +117,7 @@
     
     <div class="ad-slot">
         <ins class="adsbygoogle"
-             style="display:block; min-width:250px; min-height:100px;"
+             style="display:inline-block;min-width:320px;min-height:100px"
              data-ad-client="ca-pub-8763574694147463"
              data-ad-slot="3318123354"
              data-ad-format="horizontal"
@@ -177,7 +191,7 @@
 
     <div class="ad-slot" style="min-height: 250px;">
         <ins class="adsbygoogle"
-             style="display:block; min-width:250px; min-height:250px;"
+             style="display:inline-block;min-width:300px;min-height:250px"
              data-ad-client="ca-pub-8763574694147463"
              data-ad-slot="8195879662"
              data-ad-format="rectangle"
@@ -297,7 +311,7 @@
 
     function resetForAscend() { 
         spores = 0; playerLvl = 1; playerXP = 0; frenzyCooldown = 0; frenzyTimer = 0; isFrenzyActive = false;
-        for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); 
+        for (let k in upgrades) upgrades[k].qty = 0; saveGame(true);
     }
 
     function updateUI() {
@@ -342,13 +356,13 @@
 
     window.saveGame = async function(indicator) {
         if (!pName) return;
-        if (getSPS() > 1e20 && playerLvl < 50) return; 
+        if (getSPS() > 1e20 && playerLvl < 50) return;
         const saveTime = Date.now();
         const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, frenzyCooldown, lastTime: saveTime, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
         localStorage.setItem("shroom_save_v4", JSON.stringify(d));
-        if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
+        if(getEl('lastSavedTime')) getEl('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         try { await supabaseClient.from('leaderboard').upsert({ username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString() }, { onConflict: 'username' }); fetchOnlineCount(); } catch(e) { }
-        if(indicator && document.getElementById('saveStatus')) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
+        if(indicator && getEl('saveStatus')) { getEl('saveStatus').style.opacity = "1"; setTimeout(() => { if(getEl('saveStatus')) getEl('saveStatus').style.opacity = "0" }, 2000); }
     };
 
     window.initGame = function() {
@@ -360,7 +374,7 @@
             spores = Number(saved.spores) || 0; mushrooms = Number(saved.mushrooms) || 0; ascensionTimes = Number(saved.ascensionTimes) || 0; pName = saved.pName || ""; premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; playerLvl = Number(saved.playerLvl) || 1; playerXP = Number(saved.playerXP) || 0; frenzyCooldown = Number(saved.frenzyCooldown) || 0;
             if(saved.upgradeQtys) { for(let k in upgrades) { if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]); } }
             let now = Date.now(); let gap = (now - (saved.lastTime || now)) / 1000;
-            if (gap > 86400) gap = 86400; 
+            if (gap > 86400) gap = 86400;
             if (gap > 5) { let earned = getSPS() * gap; if (earned > 0) { spores += earned; addXP(earned * 0.05); if(document.getElementById('offlineGain')) document.getElementById('offlineGain').textContent = "+" + format(earned); if(document.getElementById('offlineModal')) document.getElementById('offlineModal').style.display = 'flex'; } }
         }
         if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; } else { document.getElementById('usernameOverlay').style.display = 'flex'; }
@@ -398,3 +412,4 @@
 </script>
 </body>
 </html>
+
