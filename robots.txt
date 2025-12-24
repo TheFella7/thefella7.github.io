@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Specifically allow Googlebot to see everything for ads
+User-agent: Googlebot
+Allow: /
