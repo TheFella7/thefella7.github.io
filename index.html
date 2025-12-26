@@ -23,8 +23,29 @@
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
-        /* NEW: Top Right Mail Notification */
-        #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
+        /* UPDATED: Top Left Mail Notification */
+        #mailNotif { 
+            position: fixed; 
+            top: 15px; 
+            left: 15px; 
+            background: var(--neon); 
+            color: white; 
+            padding: 8px 12px; 
+            border-radius: 12px; 
+            font-size: 1em; 
+            font-weight: bold; 
+            z-index: 9999; 
+            box-shadow: 0 0 20px var(--neon); 
+            cursor: pointer; 
+            display: none; 
+            border: 2px solid white;
+            animation: shake 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes shake {
+            0% { transform: rotate(-5deg); }
+            100% { transform: rotate(5deg); }
+        }
         
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
@@ -202,7 +223,6 @@
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     
-    // Notification variables
     let lastChatId = null;
     let unreadCount = 0;
 
@@ -322,12 +342,6 @@
 
     window.saveGame = async function(indicator) {
         if (!pName) return;
-        const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
-        const maxPossibleGain = (getSPS() * timePassed * 1.5) + (timePassed * 25 * getTotalMult());
-        const actualGain = spores - lastSporesAmount;
-        if (actualGain > maxPossibleGain && lastSporesAmount > 0 && timePassed > 1) {
-            spores = lastSporesAmount + maxPossibleGain;
-        }
         const saveTime = Date.now();
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
@@ -337,7 +351,7 @@
         d.h = generateHash(d);
         const encrypted = btoa(JSON.stringify(d));
         localStorage.setItem("shroom_save_v4_sec", encrypted);
-        lastSporesAmount = spores; lastSaveTimestamp = saveTime;
+        lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         try { 
             await supabaseClient.from('leaderboard').upsert({ 
@@ -369,7 +383,6 @@
                 }
             } catch(e) {}
         }
-        lastSporesAmount = spores;
         if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; } 
         else { document.getElementById('usernameOverlay').style.display = 'flex'; }
         setInterval(() => {
@@ -431,11 +444,13 @@
     window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2 && i.length <= 15) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } };
     window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     
-    // NOTIFICATION CLEARING LOGIC
+    // NOTIFICATION CLEARING
     window.clearUnread = function() {
         unreadCount = 0;
-        document.getElementById('mailNotif').style.display = 'none';
-        document.getElementById('chatContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const mailNotif = document.getElementById('mailNotif');
+        if(mailNotif) mailNotif.style.display = 'none';
+        const chatBox = document.getElementById('chatContainer');
+        if(chatBox) chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
     window.fetchChat = async function() { 
@@ -447,7 +462,7 @@
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
                     
-                    // NEW: Persistent Unread Logic
+                    // IF NEW MESSAGES ARRIVED
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
@@ -482,8 +497,8 @@
     if(window.paypal) {
         paypal.Buttons({ 
             style: { shape: 'pill', color: 'gold', height: 40 }, 
-            createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-            onApprove: (d, a) => a.order.capture().then(async o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); try { await supabaseClient.from('purchases').upsert({ username: pName, total_boost: premiumBoostAdd }); } catch(e){} } }) 
+            createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: \"GBP\", value: \"1.69\" } }] }), 
+            onApprove: (d, a) => a.order.capture().then(async o => { if (o.status === \"COMPLETED\") { premiumBoostAdd += 20; saveGame(true); updateUI(); try { await supabaseClient.from('purchases').upsert({ username: pName, total_boost: premiumBoostAdd }); } catch(e){} } }) 
         }).render('#paypal-button-container');
     }
 
