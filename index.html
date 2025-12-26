@@ -22,6 +22,10 @@
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
+        
+        /* NEW: Top Right Mail Notification */
+        #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
+        
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg); border: 2px solid var(--neon); padding: 30px; border-radius: 20px; max-width: 300px; box-shadow: 0 0 30px var(--neon); }
@@ -47,9 +51,7 @@
         button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; box-shadow: 0 4px 15px rgba(0,255,255,0.2); line-height: 1.2; min-height: 52px; }
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; color: #000; cursor: pointer; }
         .afford-tag { position: absolute; top: -8px; right: -5px; background: var(--neon); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 12px; border: 1px solid #fff; z-index: 5; font-weight: bold; }
-        #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; position: relative; }
-        .chat-notif { position: absolute; top: 5px; right: 5px; background: var(--xp); color: #000; font-size: 0.6em; padding: 2px 5px; border-radius: 4px; font-weight: bold; display: none; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        #chatContainer { height: 150px; overflow-y: auto; text-align: left; font-size: 0.85em; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid #333; margin-bottom: 10px; }
         .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.85em; align-items: center; }
         .ad-slot { min-height: 100px; margin: 20px auto; max-width: 450px; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; }
         button:disabled { opacity: 0.3; filter: grayscale(1); }
@@ -65,6 +67,8 @@
     </style>
 </head>
 <body onload="initGame()">
+
+<div id="mailNotif" onclick="clearUnread()">✉️ <span id="unreadCount">0</span></div>
 
 <div id="offlineModal">
     <div class="modal-content">
@@ -120,7 +124,7 @@
             <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
             <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
             <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
-            <li><b>Ascend:</b> Use Shrooms to increase your permanent multiplier!</li>
+            <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
         </ul>
     </div>
 
@@ -149,10 +153,7 @@
 
     <div class="card">
         <h3>💬 Global Chat</h3>
-        <div style="position: relative;">
-            <div id="chatNotif" class="chat-notif">NEW!</div>
-            <div id="chatContainer"></div>
-        </div>
+        <div id="chatContainer" onclick="clearUnread()"></div>
         <div style="display: flex; gap: 8px;">
             <input type="text" id="chatInput" maxlength="100" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--neon); background: #000; color: #fff;" placeholder="Global Chat...">
             <button onclick="sendChatMessage()" style="padding: 0 15px; border-radius: 8px; background: var(--neon); color: #fff; border: none; font-weight:bold;">Send</button>
@@ -200,8 +201,11 @@
     let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0;
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
-    let lastChatId = null;
     
+    // Notification variables
+    let lastChatId = null;
+    let unreadCount = 0;
+
     let lastClickTime = 0;
     let clickIntervals = [];
     let lastSporesAmount = 0;
@@ -372,7 +376,7 @@
             let now = Date.now(), dt = (now - lastUpdate) / 1000; 
             if(dt > 2 || dt < 0) dt = 0.1; 
             lastUpdate = now;
-            updateClock(); // FIXED: Clock now updates here every 100ms
+            updateClock();
             if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); } } 
             else if (frenzyCooldown > 0) { frenzyCooldown -= dt; }
             let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
@@ -427,6 +431,13 @@
     window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2 && i.length <= 15) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } };
     window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     
+    // NOTIFICATION CLEARING LOGIC
+    window.clearUnread = function() {
+        unreadCount = 0;
+        document.getElementById('mailNotif').style.display = 'none';
+        document.getElementById('chatContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
     window.fetchChat = async function() { 
         try { 
             const { data, error } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(10); 
@@ -435,12 +446,17 @@
                 const reversed = data.reverse();
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
-                    // NOTIFICATION LOGIC
+                    
+                    // NEW: Persistent Unread Logic
                     if(lastChatId && currentTopId !== lastChatId) {
-                        const notif = document.getElementById('chatNotif');
-                        if(notif) {
-                            notif.style.display = 'block';
-                            setTimeout(() => { notif.style.display = 'none'; }, 5000);
+                        const newMessages = reversed.filter(m => m.id > lastChatId).length;
+                        unreadCount += newMessages;
+                        
+                        const mailNotif = document.getElementById('mailNotif');
+                        const unreadSpan = document.getElementById('unreadCount');
+                        if(mailNotif && unreadCount > 0) {
+                            mailNotif.style.display = 'block';
+                            unreadSpan.textContent = unreadCount;
                         }
                     }
                     lastChatId = currentTopId;
@@ -457,14 +473,9 @@
     
     window.hardReset = function() {
         if(confirm("Hard reset? Spores and Upgrades will be lost. (Ascensions and Permanent Multipliers will be kept)")) { 
-            // RESTORE LOGIC: Keep Multipliers/Ascensions
-            spores = 0;
-            mushrooms = 0;
-            playerLvl = 1;
-            playerXP = 0;
+            spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0;
             for (let k in upgrades) upgrades[k].qty = 0;
-            saveGame(true);
-            updateUI();
+            saveGame(true); updateUI();
         }
     };
 
