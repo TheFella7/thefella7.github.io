@@ -123,7 +123,7 @@
         <ul class="info-list">
             <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
             <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
-            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
+            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost! (Refresh timer by clicking while active)</li>
             <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
         </ul>
     </div>
@@ -202,7 +202,6 @@
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     
-    // Notification variables
     let lastChatId = null;
     let unreadCount = 0;
 
@@ -264,9 +263,17 @@
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
         
-        if (!isFrenzyActive && frenzyCooldown <= 0) {
+        // UPDATED: Refresh 15s timer if already active, otherwise build toward it
+        if (isFrenzyActive) {
+            frenzyTimer = 15; 
+        } else if (frenzyCooldown <= 0) {
             frenzyClicks++;
-            if (frenzyClicks >= 50) { isFrenzyActive = true; frenzyTimer = 15; frenzyClicks = 0; el.classList.add("shroom-frenzy-active"); }
+            if (frenzyClicks >= 50) { 
+                isFrenzyActive = true; 
+                frenzyTimer = 15; 
+                frenzyClicks = 0; 
+                el.classList.add("shroom-frenzy-active"); 
+            }
         }
         
         let gain = 1 * getTotalMult(); spores += gain; addXP(1);
@@ -320,6 +327,7 @@
         for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); 
     }
 
+    // UPDATED: Save includes Frenzy states
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -332,6 +340,7 @@
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
             lastTime: saveTime, 
+            frenzyTimer, frenzyCooldown, isFrenzyActive, // Added persistency
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
         d.h = generateHash(d);
@@ -350,6 +359,7 @@
         }
     };
 
+    // UPDATED: Load includes Frenzy states and handles elapsed time for cooldowns
     window.initGame = function() {
         const container = document.getElementById('upgradeContainer');
         if(container) { container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } }
@@ -359,10 +369,25 @@
                 const saved = JSON.parse(atob(savedRaw));
                 if (saved.h !== generateHash(saved)) { spores = 0; } else {
                     spores = Number(saved.spores) || 0; mushrooms = Number(saved.mushrooms) || 0; ascensionTimes = Number(saved.ascensionTimes) || 0; pName = saved.pName || ""; premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; playerLvl = Number(saved.playerLvl) || 1; playerXP = Number(saved.playerXP) || 0;
+                    
+                    // Added Load Persistency
+                    frenzyTimer = Number(saved.frenzyTimer) || 0;
+                    frenzyCooldown = Number(saved.frenzyCooldown) || 0;
+                    isFrenzyActive = saved.isFrenzyActive || false;
+
                     if(saved.upgradeQtys) { for(let k in upgrades) { if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]); } }
                 }
                 let now = Date.now(); let gap = (now - (saved.lastTime || now)) / 1000;
                 if (gap > 86400) gap = 86400;
+
+                // Adjust timers based on gap
+                if (isFrenzyActive) {
+                    frenzyTimer = Math.max(0, frenzyTimer - gap);
+                    if (frenzyTimer <= 0) isFrenzyActive = false;
+                } else if (frenzyCooldown > 0) {
+                    frenzyCooldown = Math.max(0, frenzyCooldown - gap);
+                }
+
                 if (gap > 5) { 
                     let earned = getSPS() * gap; 
                     if (earned > 0) { spores += earned; addXP(earned * 0.05); document.getElementById('offlineGain').textContent = "+" + format(earned); document.getElementById('offlineModal').style.display = 'flex'; } 
@@ -372,6 +397,10 @@
         lastSporesAmount = spores;
         if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; } 
         else { document.getElementById('usernameOverlay').style.display = 'flex'; }
+        
+        // Initial check for active frenzy styling
+        if (isFrenzyActive) document.getElementById('mushroomClicker').classList.add("shroom-frenzy-active");
+
         setInterval(() => {
             let now = Date.now(), dt = (now - lastUpdate) / 1000; 
             if(dt > 2 || dt < 0) dt = 0.1; 
@@ -402,7 +431,11 @@
         
         const fStatus = getEl('frenzyStatus'), fFill = getEl('frenzyFill');
         if (fStatus && fFill) {
-            if (isFrenzyActive) { fStatus.textContent = "FRENZY Active (" + Math.ceil(frenzyTimer) + "s)"; fFill.style.width = (frenzyTimer / 15 * 100) + "%"; }
+            if (isFrenzyActive) { 
+                fStatus.textContent = "FRENZY Active (" + Math.ceil(frenzyTimer) + "s)"; 
+                fFill.style.width = (frenzyTimer / 15 * 100) + "%"; 
+                getEl('mushroomClicker').classList.add("shroom-frenzy-active");
+            }
             else if (frenzyCooldown > 0) { fStatus.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; fFill.style.width = (100 - (frenzyCooldown / 600 * 100)) + "%"; }
             else { fStatus.textContent = `READY: ${frenzyClicks}/50 CLICKS`; fFill.style.width = (frenzyClicks / 50 * 100) + "%"; }
         }
@@ -431,7 +464,6 @@
     window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2 && i.length <= 15) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } };
     window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     
-    // NOTIFICATION CLEARING LOGIC
     window.clearUnread = function() {
         unreadCount = 0;
         document.getElementById('mailNotif').style.display = 'none';
@@ -446,12 +478,9 @@
                 const reversed = data.reverse();
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
-                    
-                    // NEW: Persistent Unread Logic
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
-                        
                         const mailNotif = document.getElementById('mailNotif');
                         const unreadSpan = document.getElementById('unreadCount');
                         if(mailNotif && unreadCount > 0) {
@@ -474,6 +503,7 @@
     window.hardReset = function() {
         if(confirm("Hard reset? Spores and Upgrades will be lost. (Ascensions and Permanent Multipliers will be kept)")) { 
             spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0;
+            frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false;
             for (let k in upgrades) upgrades[k].qty = 0;
             saveGame(true); updateUI();
         }
