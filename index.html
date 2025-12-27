@@ -303,7 +303,8 @@
     }
 
     window.saveGame = async function(indicator) {
-        if (!pName && indicator !== "FORCE") return;
+        // Updated: Only skip saving if name is missing AND we aren't performing a force save for reset
+        if (!pName && indicator !== "FORCE_RESET") return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
         const maxPossibleGain = (getSPS() * timePassed * 1.5) + (timePassed * 25 * getTotalMult());
         const actualGain = spores - lastSporesAmount;
@@ -319,6 +320,8 @@
         localStorage.setItem("shroom_save_v4_sec", encrypted);
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
+        
+        // Skip Supabase update if name is empty (during reset)
         if (pName) {
             try { 
                 await supabaseClient.from('leaderboard').upsert({ 
@@ -326,7 +329,8 @@
                 }, { onConflict: 'username' }); 
             } catch(e) {}
         }
-        if(indicator && indicator !== "FORCE" && document.getElementById('saveStatus')) { 
+
+        if(indicator && indicator !== "FORCE_RESET" && document.getElementById('saveStatus')) { 
             document.getElementById('saveStatus').style.opacity = "1"; 
             setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); 
         }
@@ -429,16 +433,21 @@
     window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
     window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     
+    // UPDATED: hardReset function now keeps permanent multipliers, ascensions, and total mushrooms.
     window.hardReset = function() {
-        if(confirm("Hard reset? Spores and Upgrades will be lost. KEEPS Ascensions and Permanent Multipliers. This will allow you to change your name.")) { 
+        if(confirm("Hard Reset? Spores and Upgrades will be lost. BUT your Name Change option, Ascensions, and Multipliers will be kept.")) { 
+            // 1. Reset ONLY temporary progress
             spores = 0; 
             playerLvl = 1; 
             playerXP = 0;
             for (let k in upgrades) upgrades[k].qty = 0;
             
+            // 2. Clear name to trigger naming overlay
             pName = ""; 
             
-            saveGame("FORCE").then(() => {
+            // 3. Force a save with the empty name so it persists through reload
+            saveGame("FORCE_RESET").then(() => {
+                // 4. Reload page
                 location.reload(); 
             });
         }
