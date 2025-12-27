@@ -199,7 +199,7 @@
     const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-    let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0;
+    let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, playerId = "";
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     
@@ -338,7 +338,7 @@
         const saveTime = Date.now();
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
-            frenzyCooldown,
+            frenzyCooldown, playerId,
             lastTime: saveTime, 
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
@@ -347,11 +347,14 @@
         localStorage.setItem("shroom_save_v4_sec", encrypted);
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
+        
+        // Use playerId for syncing leaderboard to prevent name conflicts
         try { 
             await supabaseClient.from('leaderboard').upsert({ 
-                username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString()
-            }, { onConflict: 'username' }); 
+                player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString()
+            }, { onConflict: 'player_id' }); 
         } catch(e) {}
+
         if(indicator && document.getElementById('saveStatus')) { 
             document.getElementById('saveStatus').style.opacity = "1"; 
             setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); 
@@ -359,6 +362,13 @@
     };
 
     window.initGame = function() {
+        // Unique Player ID Setup
+        playerId = localStorage.getItem("shroom_player_id");
+        if (!playerId) {
+            playerId = 'id-' + Math.random().toString(36).substr(2, 16);
+            localStorage.setItem("shroom_player_id", playerId);
+        }
+
         const container = document.getElementById('upgradeContainer');
         if(container) { container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } }
         const savedRaw = localStorage.getItem("shroom_save_v4_sec");
@@ -455,11 +465,9 @@
                 const reversed = data.reverse();
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
-                    
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
-                        
                         const mailNotif = document.getElementById('mailNotif');
                         const unreadSpan = document.getElementById('unreadCount');
                         if(mailNotif && unreadCount > 0) {
@@ -477,12 +485,29 @@
     window.sendChatMessage = async function() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { try { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } catch(e){} } };
     window.loadLeaderboard = async function() { try { const { data, error } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); if (data && !error) { const list = document.getElementById('leaderboardList'); if(list) list.innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username || 'Unknown'}</span><span style="color:var(--xp)">${p.level || 1}</span><span style="color:var(--neon)">${p.ascensions || 0}</span></div>`).join(''); } } catch(e) {} };
     window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
-    window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     
-    // UPDATED: Hard reset now clears every variable and local storage
+    // UPDATED: Restore purchases now uses playerId for name-independence
+    window.restorePurchases = async function() { 
+        try { 
+            const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single(); 
+            if (data && !error) { 
+                premiumBoostAdd = data.total_boost; 
+                alert("Purchases restored!"); 
+                saveGame(true); 
+                updateUI(); 
+            } else {
+                alert("No purchases found for this device.");
+            }
+        } catch(e) { } 
+    };
+    
     window.hardReset = function() {
-        if(confirm("FULL RESET? This will delete EVERYTHING including Shrooms, Ascensions, Name, and Premium Multipliers. You cannot undo this.")) { 
+        if(confirm("FULL RESET? This will delete EVERYTHING including Shrooms, Ascensions, Name, and Premium Multipliers. (Note: Multipliers can be restored via the Restore button after reset)")) { 
+            // We clear save data but KEEPS the playerId in localStorage so they can restore purchases
+            const currentId = localStorage.getItem("shroom_player_id");
             localStorage.clear();
+            localStorage.setItem("shroom_player_id", currentId);
+            
             spores = 0; mushrooms = 0; ascensionTimes = 0; pName = ""; premiumBoostAdd = 0;
             playerLvl = 1; playerXP = 0; frenzyCooldown = 0; frenzyTimer = 0; isFrenzyActive = false;
             for (let k in upgrades) upgrades[k].qty = 0;
@@ -494,7 +519,21 @@
         paypal.Buttons({ 
             style: { shape: 'pill', color: 'gold', height: 40 }, 
             createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-            onApprove: (d, a) => a.order.capture().then(async o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); try { await supabaseClient.from('purchases').upsert({ username: pName, total_boost: premiumBoostAdd }); } catch(e){} } }) 
+            onApprove: (d, a) => a.order.capture().then(async o => { 
+                if (o.status === "COMPLETED") { 
+                    premiumBoostAdd += 20; 
+                    saveGame(true); 
+                    updateUI(); 
+                    try { 
+                        // Upsert purchase based on playerId
+                        await supabaseClient.from('purchases').upsert({ 
+                            player_id: playerId, 
+                            username: pName, 
+                            total_boost: premiumBoostAdd 
+                        }, { onConflict: 'player_id' }); 
+                    } catch(e){} 
+                } 
+            }) 
         }).render('#paypal-button-container');
     }
 
