@@ -177,7 +177,7 @@
         <script> (window.adsbygoogle = window.adsbygoogle || []).push({}); </script>
     </div>
     
-    <button class="hard-reset-btn" onclick="hardReset()">HARD RESET PROGRESS</button>
+    <button class="hard-reset-btn" onclick="hardReset()">SOFT RESET (Change Name, Keep Bonuses)</button>
 </main>
 
 <footer>
@@ -433,21 +433,20 @@
     window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
     window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     
-    // UPDATED: hardReset function now keeps permanent multipliers, ascensions, and total mushrooms.
+    // UPDATED: hardReset button logic
     window.hardReset = function() {
-        if(confirm("Hard Reset? Spores and Upgrades will be lost. BUT your Name Change option, Ascensions, and Multipliers will be kept.")) { 
+        if(confirm("Perform Soft Reset? This will reset your Spores, Levels, and Upgrades, but you will KEEP your Name Change option, Ascensions, and Multipliers.")) { 
             // 1. Reset ONLY temporary progress
             spores = 0; 
             playerLvl = 1; 
             playerXP = 0;
             for (let k in upgrades) upgrades[k].qty = 0;
             
-            // 2. Clear name to trigger naming overlay
+            // 2. Clear name to allow player to change it
             pName = ""; 
             
-            // 3. Force a save with the empty name so it persists through reload
+            // 3. Force a save while pName is empty so it triggers naming overlay on next load
             saveGame("FORCE_RESET").then(() => {
-                // 4. Reload page
                 location.reload(); 
             });
         }
