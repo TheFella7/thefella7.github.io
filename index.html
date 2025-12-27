@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire in this deep idle clicker game.">
+    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
     <meta name="theme-color" content="#0a0118">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
@@ -16,7 +16,6 @@
         #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; }
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
-        #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         .bar-wrapper { width: 90%; margin: 10px auto; }
         .bar-text { font-size: 0.8em; font-weight: bold; margin-bottom: 4px; display: block; }
         .full-bar { height: 16px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; position: relative; }
@@ -157,27 +156,56 @@
 
     window.buyUpgrade = (id, max) => {
         let u = upgrades[id];
-        const loop = () => { let c = u.base * Math.pow(u.growth, u.qty); if(spores >= c) { spores -= c; u.qty++; return true; } return false; };
-        if(max) { let s=0; while(loop() && s<500) s++; } else loop();
+        const getCost = (q) => u.base * Math.pow(u.growth, q);
+        if(max) { 
+            let count = 0;
+            while(spores >= getCost(u.qty) && count < 1000) {
+                spores -= getCost(u.qty);
+                u.qty++;
+                count++;
+            }
+        } else {
+            let cost = getCost(u.qty);
+            if(spores >= cost) { spores -= cost; u.qty++; }
+        }
         updateUI();
     };
 
     window.buyMushroom = (max) => {
-        const loop = () => { let c = 3000 * Math.pow(1.2, mushrooms); if(spores >= c) { spores -= c; mushrooms++; return true; } return false; };
-        if(max) { let s=0; while(loop() && s<500) s++; } else loop();
+        const getCost = (q) => 3000 * Math.pow(1.2, q);
+        if(max) {
+            let count = 0;
+            while(spores >= getCost(mushrooms) && count < 1000) {
+                spores -= getCost(mushrooms);
+                mushrooms++;
+                count++;
+            }
+        } else {
+            let cost = getCost(mushrooms);
+            if(spores >= cost) { spores -= cost; mushrooms++; }
+        }
     };
 
     window.ascend = (max) => {
-        const loop = () => { let c = 50 * Math.pow(1.08, ascensionTimes); if(mushrooms >= c) { mushrooms -= c; ascensionTimes++; return true; } return false; };
-        let count = 0; if(max) { while(loop() && count < 50) count++; } else if(loop()) count++;
-        if(count > 0) { spores=0; playerLvl=1; playerXP=0; Object.values(upgrades).forEach(u => u.qty=0); saveGame(true); }
+        const getCost = (q) => 50 * Math.pow(1.08, q);
+        let start = ascensionTimes;
+        if(max) {
+            while(mushrooms >= getCost(ascensionTimes) && (ascensionTimes - start) < 50) {
+                mushrooms -= getCost(ascensionTimes);
+                ascensionTimes++;
+            }
+        } else {
+            let cost = getCost(ascensionTimes);
+            if(mushrooms >= cost) { mushrooms -= cost; ascensionTimes++; }
+        }
+        if(ascensionTimes > start) { spores=0; playerLvl=1; playerXP=0; Object.values(upgrades).forEach(u => u.qty=0); saveGame(true); }
     };
 
     window.requestNameChange = () => {
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
         const remaining = (lastNameChange + thirtyDays) - Date.now();
         if (lastNameChange && remaining > 0) {
-            alert(`Too soon! You can change your name again in ${Math.ceil(remaining / (1000 * 60 * 60 * 24))} days.`);
+            alert(`Too soon! Change available in ${Math.ceil(remaining / (1000 * 60 * 60 * 24))} days.`);
             return;
         }
         const name = prompt("Enter new name (2-15 chars):");
@@ -189,7 +217,7 @@
     };
 
     window.hardReset = () => {
-        if(confirm("Hard Reset? You lose Spores/Level/Upgrades. You KEEP Name, Mushrooms, Ascensions, and Multipliers.")) {
+        if(confirm("Hard Reset? Keeping Name, Multipliers, Ascensions, and Mushrooms.")) {
             spores=0; playerLvl=1; playerXP=0; Object.values(upgrades).forEach(u => u.qty=0);
             saveGame(true); location.reload();
         }
@@ -209,7 +237,7 @@
         const saved = localStorage.getItem("shroom_save_v5");
         if(saved) {
             const s = JSON.parse(atob(saved));
-            spores=s.spores; mushrooms=s.mushrooms; ascensionTimes=s.ascensionTimes; pName=s.pName; playerLvl=s.playerLvl; playerXP=s.playerXP; premiumBoostAdd=s.premiumBoostAdd||0; lastNameChange=s.lastNameChange||0;
+            spores=s.spores||0; mushrooms=s.mushrooms||0; ascensionTimes=s.ascensionTimes||0; pName=s.pName||""; playerLvl=s.playerLvl||1; playerXP=s.playerXP||0; premiumBoostAdd=s.premiumBoostAdd||0; lastNameChange=s.lastNameChange||0;
             if(s.upgradeQtys) Object.keys(s.upgradeQtys).forEach(k => upgrades[k].qty = s.upgradeQtys[k]);
         }
         if(!pName) document.getElementById('usernameOverlay').style.display='flex';
@@ -240,34 +268,40 @@
         
         const fS = document.getElementById('frenzyStatus'), fF = document.getElementById('frenzyFill');
         if(isFrenzyActive) { fS.textContent = "FRENZY: " + Math.ceil(frenzyTimer) + "s"; fF.style.width = (frenzyTimer/15*100) + "%"; }
-        else if(frenzyCooldown > 0) { fS.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; fF.style.width = (100-(frenzyCooldown/600*100)) + "%"; }
-        else { fS.textContent = "READY: " + frenzyClicks + "/50"; fF.style.width = (frenzyClicks/50*100) + "%"; }
+        else if(frenzyCooldown > 0) { fS.textContent = "CD: " + Math.floor(frenzyCooldown) + "s"; fF.style.width = (100-(frenzyCooldown/600*100)) + "%"; }
+        else { fS.textContent = "FRENZY: " + frenzyClicks + "/50"; fF.style.width = (frenzyClicks/50*100) + "%"; }
 
-        // Update Upgrades and Pink Tags
+        // Upgrades and Fix for Pink Tags
         Object.keys(upgrades).forEach(k => {
             let u = upgrades[k], cost = u.base * Math.pow(u.growth, u.qty);
             document.getElementById('btn-'+k).innerHTML = `${u.name} (${u.qty})<br><span>${format(cost)}</span>`;
             document.getElementById('btn-'+k).disabled = (spores < cost);
             
-            // Fix Pink Tag (+X) Logic
-            let tempS = spores, count = 0, nextC = cost;
-            while(tempS >= nextC && count < 500) { tempS -= nextC; count++; nextC = u.base * Math.pow(u.growth, u.qty + count); }
-            let tag = document.getElementById('tag-'+k);
-            if(count > 0) { tag.textContent = "+"+count; tag.style.display = "block"; } else { tag.style.display = "none"; }
+            // Precise tag calculation
+            let tempS = spores, canBuy = 0, nextCost = cost;
+            while(tempS >= nextCost && canBuy < 1000) {
+                tempS -= nextCost;
+                canBuy++;
+                nextCost = u.base * Math.pow(u.growth, u.qty + canBuy);
+            }
+            let tEl = document.getElementById('tag-'+k);
+            if(canBuy > 0) { tEl.style.display = "block"; tEl.textContent = "+" + canBuy; }
+            else { tEl.style.display = "none"; }
         });
 
-        // Mush & Ascend Tags
-        let mCost = 3000 * Math.pow(1.2, mushrooms), mS = spores, mC = 0;
-        while(mS >= (3000 * Math.pow(1.2, mushrooms + mC)) && mC < 100) { mS -= (3000 * Math.pow(1.2, mushrooms + mC)); mC++; }
+        // Mush Tag
+        let mS = spores, mC = 0;
+        while(mS >= (3000 * Math.pow(1.2, mushrooms + mC)) && mC < 1000) { mS -= (3000 * Math.pow(1.2, mushrooms + mC)); mC++; }
         document.getElementById('tag-mushrooms').style.display = mC > 0 ? "block" : "none";
-        document.getElementById('tag-mushrooms').textContent = "+"+mC;
-        document.getElementById('buyMushroomBtn').disabled = spores < mCost;
-        
-        let aCost = 50 * Math.pow(1.08, ascensionTimes), aS = mushrooms, aC = 0;
-        while(aS >= (50 * Math.pow(1.08, ascensionTimes + aC)) && aC < 50) { aS -= (50 * Math.pow(1.08, ascensionTimes + aC)); aC++; }
+        document.getElementById('tag-mushrooms').textContent = "+" + mC;
+        document.getElementById('buyMushroomBtn').disabled = spores < (3000 * Math.pow(1.2, mushrooms));
+
+        // Ascend Tag
+        let aS = mushrooms, aC = 0;
+        while(aS >= (50 * Math.pow(1.08, ascensionTimes + aC)) && aC < 1000) { aS -= (50 * Math.pow(1.08, ascensionTimes + aC)); aC++; }
         document.getElementById('tag-ascend').style.display = aC > 0 ? "block" : "none";
-        document.getElementById('tag-ascend').textContent = "+"+aC;
-        document.getElementById('ascendBtn').disabled = mushrooms < aCost;
+        document.getElementById('tag-ascend').textContent = "+" + aC;
+        document.getElementById('ascendBtn').disabled = mushrooms < (50 * Math.pow(1.08, ascensionTimes));
 
         document.getElementById('liveClock').textContent = new Date().toLocaleString();
     }
