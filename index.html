@@ -22,7 +22,7 @@
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
-        #mailNotif { position: fixed; top: 15px; left: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
+        #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg); border: 2px solid var(--neon); padding: 30px; border-radius: 20px; max-width: 300px; box-shadow: 0 0 30px var(--neon); }
@@ -58,6 +58,7 @@
         #nameChangeInput { padding: 8px; border-radius: 5px; border: 1px solid var(--neon); background: #000; color: #fff; width: 60%; }
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
+        #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
     </style>
 </head>
 <body onload="initGame()">
@@ -226,7 +227,7 @@
         setTimeout(() => el.classList.remove('shroom-click'), 50);
 
         if (isFrenzyActive) {
-            frenzyTimer = 15; // Timer refreshes to 15s every click while active
+            frenzyTimer = 15; // Refreshes timer on every click while active
         } else if (frenzyCooldown <= 0) {
             frenzyClicks++;
             if (frenzyClicks >= 50) { 
@@ -258,12 +259,26 @@
         updateUI(); saveGame(false);
     };
 
+    window.buyMushroom = (isMax) => {
+        const b = 3000, g = 1.2;
+        if (isMax) { while (spores >= b * Math.pow(g, mushrooms)) { spores -= b * Math.pow(g, mushrooms); mushrooms++; } }
+        else { let cost = b * Math.pow(g, mushrooms); if (spores >= cost) { spores -= cost; mushrooms++; } }
+        updateUI(); saveGame(false);
+    };
+
+    window.ascend = (isMax) => {
+        const b = 50, g = 1.08;
+        if (isMax) { while (mushrooms >= b * Math.pow(g, ascensionTimes)) { mushrooms -= b * Math.pow(g, ascensionTimes); ascensionTimes++; } }
+        else { let cost = b * Math.pow(g, ascensionTimes); if (mushrooms >= cost) { mushrooms -= cost; ascensionTimes++; } }
+        spores = 0; playerLvl = 1; playerXP = 0; for(let k in upgrades) upgrades[k].qty = 0;
+        updateUI(); saveGame(true);
+    };
+
     window.saveGame = async (indicator) => {
         if (!pName) return;
-        const saveTime = Date.now();
         const d = { 
-            spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, lastTime: saveTime, lastNmChg,
-            frenzyTimer, frenzyCooldown, isFrenzyActive, // Persist Frenzy
+            spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
+            lastTime: Date.now(), lastNmChg, frenzyTimer, frenzyCooldown, isFrenzyActive,
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
         d.h = generateHash(d);
@@ -286,13 +301,9 @@
                 
                 let gap = (Date.now() - s.lastTime) / 1000;
                 if (gap > 5) {
-                    // Reduce cooldowns by time spent away so they don't refresh
-                    if (frenzyCooldown > 0) frenzyCooldown = Math.max(0, frenzyCooldown - gap);
-                    if (isFrenzyActive) {
-                        frenzyTimer = Math.max(0, frenzyTimer - gap);
-                        if (frenzyTimer <= 0) isFrenzyActive = false;
-                    }
-                    let earned = getSPS() * gap; spores += earned;
+                    if (isFrenzyActive) { frenzyTimer = Math.max(0, frenzyTimer - gap); if (frenzyTimer <= 0) isFrenzyActive = false; }
+                    else if (frenzyCooldown > 0) { frenzyCooldown = Math.max(0, frenzyCooldown - gap); }
+                    spores += getSPS() * gap;
                 }
             } catch(e) {}
         }
@@ -306,7 +317,6 @@
             spores += getSPS() * dt; autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
             updateUI();
         }, 100);
-        setInterval(fetchChat, 5000);
     };
 
     window.updateUI = () => {
@@ -332,8 +342,21 @@
 
         for (let k in upgrades) {
             let u = upgrades[k], cost = u.base * Math.pow(u.growth, u.qty);
-            document.getElementById('btn-'+k).innerHTML = `${u.name} (${u.qty})<br><span class="btn-cost">${format(cost)}</span>`;
+            let btn = document.getElementById('btn-'+k);
+            btn.innerHTML = `${u.name} (${u.qty})<br><span class="btn-cost">${format(cost)}</span>`;
+            let ts = spores, tc = 0, n = cost; while(ts >= n && tc < 1000) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
+            let tag = document.getElementById('tag-'+k); tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none";
         }
+
+        let mushCost = 3000 * Math.pow(1.2, mushrooms);
+        document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br><span class="btn-cost">${format(mushCost)}</span>`;
+        let ms = spores, mc = 0, mn = mushCost; while(ms >= mn && mc < 1000) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
+        document.getElementById('tag-mushrooms').textContent = "+" + mc;
+        
+        let ascCost = 50 * Math.pow(1.08, ascensionTimes);
+        document.getElementById('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br><span class="btn-cost">${format(ascCost)} Shrooms</span>`;
+        let as = mushrooms, ac = 0, an = ascCost; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
+        document.getElementById('tag-ascend').textContent = "+" + ac;
     };
 
     window.changePlayerName = async () => {
@@ -353,7 +376,6 @@
     };
 
     window.confirmUsername = () => { let i = document.getElementById('playerNameInput').value.trim(); if(i.length>=2){ pName=i; document.getElementById('usernameOverlay').style.display='none'; saveGame(true); } };
-    window.fetchChat = async () => { /* Supabase Chat Logic */ };
 })();
 </script>
 </body>
