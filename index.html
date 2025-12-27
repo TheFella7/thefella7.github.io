@@ -23,7 +23,8 @@
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
-        #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
+        /* UPDATED: Mail Notification moved to Top Left */
+        #mailNotif { position: fixed; top: 15px; left: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
         
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
@@ -64,7 +65,7 @@
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
         .btn-cost { font-size: 0.9em; opacity: 0.9; display: block; margin-top: 1px; }
 
-        /* Name Change Specific Styles */
+        /* Name Change Styles */
         .cooldown-text { font-size: 0.75em; color: #ff6666; margin-top: 5px; display: none; }
         #nameChangeInput { padding: 8px; border-radius: 5px; border: 1px solid var(--neon); background: #000; color: #fff; width: 60%; }
     </style>
@@ -344,7 +345,7 @@
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
             lastTime: saveTime, 
-            lastNmChg, // TRACK NAME CHANGE
+            lastNmChg,
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
         d.h = generateHash(d);
@@ -372,7 +373,7 @@
                 const saved = JSON.parse(atob(savedRaw));
                 if (saved.h !== generateHash(saved)) { spores = 0; } else {
                     spores = Number(saved.spores) || 0; mushrooms = Number(saved.mushrooms) || 0; ascensionTimes = Number(saved.ascensionTimes) || 0; pName = saved.pName || ""; premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; playerLvl = Number(saved.playerLvl) || 1; playerXP = Number(saved.playerXP) || 0;
-                    lastNmChg = Number(saved.lastNmChg) || 0; // LOAD NAME CHANGE
+                    lastNmChg = Number(saved.lastNmChg) || 0;
                     if(saved.upgradeQtys) { for(let k in upgrades) { if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]); } }
                 }
                 let now = Date.now(); let gap = (now - (saved.lastTime || now)) / 1000;
@@ -444,7 +445,6 @@
         let as = mushrooms, ac = 0, an = ascCost; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
         if(getEl('tag-ascend')) { let ta = getEl('tag-ascend'); ta.textContent = "+" + ac; ta.style.display = ac > 0 ? "block" : "none"; }
 
-        // UPDATE NAME CHANGE UI
         if(getEl('currentNameDisplay')) getEl('currentNameDisplay').textContent = pName;
         const cooldownPeriod = 30 * 24 * 60 * 60 * 1000;
         const timeSinceLast = Date.now() - lastNmChg;
@@ -457,12 +457,12 @@
                 msg.style.display = 'none';
             }
         }
-    }
+    };
 
-    // NAME CHANGE LOGIC
+    /* Name changing logic ensuring progress preservation */
     window.changePlayerName = async function() {
         const now = Date.now();
-        const cooldownPeriod = 30 * 24 * 60 * 60 * 1000; // 30 days
+        const cooldownPeriod = 30 * 24 * 60 * 60 * 1000;
         const timeSinceLast = now - lastNmChg;
 
         if (timeSinceLast < cooldownPeriod) {
@@ -473,13 +473,14 @@
 
         const newName = document.getElementById('nameChangeInput').value.trim();
         if (newName.length >= 2 && newName.length <= 15) {
-            if (confirm(`Change name to "${newName}"? This cannot be undone for 30 days.`)) {
+            if (confirm(`Change name to "${newName}"? Progress and multipliers will be kept.`)) {
+                // pName is updated, but other variables like mushrooms, ascensionTimes, and premiumBoostAdd remain untouched
                 pName = newName;
                 lastNmChg = now;
                 document.getElementById('displayUsername').textContent = "Shroomer: " + pName;
                 document.getElementById('currentNameDisplay').textContent = pName;
                 document.getElementById('nameChangeInput').value = "";
-                saveGame(true);
+                saveGame(true); // Save current state with new name
                 updateUI();
                 alert("Name changed successfully!");
             }
