@@ -408,10 +408,17 @@
             let tag = getEl('tag-'+k); if(tag) { tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none"; }
         }
 
+        // FIXED: Mushroom tag calculation
         let mC = 3000 * Math.pow(1.2, mushrooms);
         getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${Math.floor(mushrooms)})<br><span class="btn-cost">${format(mC)}</span>`; getEl('buyMushroomBtn').disabled = spores < mC;
+        let ms = spores, mc = 0, mn = mC; while(ms >= mn && mc < 1000) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
+        let tM = getEl('tag-mushrooms'); if(tM) { tM.textContent = "+" + mc; tM.style.display = mc > 0 ? "block" : "none"; }
+
+        // FIXED: Ascension tag calculation
         let aC = 50 * Math.pow(1.08, ascensionTimes);
         getEl('ascendBtn').innerHTML = `Ascend (${Math.floor(ascensionTimes)})<br><span class="btn-cost">${format(aC)} Shrooms</span>`; getEl('ascendBtn').disabled = mushrooms < aC;
+        let as = mushrooms, ac = 0, an = aC; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
+        let tA = getEl('tag-ascend'); if(tA) { tA.textContent = "+" + ac; tA.style.display = ac > 0 ? "block" : "none"; }
     }
 
     window.closeOfflineModal = function() { document.getElementById('offlineModal').style.display = 'none'; saveGame(true); };
@@ -422,8 +429,6 @@
             pName = i; 
             document.getElementById('usernameOverlay').style.display = 'none'; 
             document.getElementById('nameText').textContent = "Shroomer: " + pName; 
-            
-            // Delete old name record by overwriting with player_id
             try {
                 await supabaseClient.from('leaderboard').upsert({ 
                     player_id: playerId, username: pName, spores: Math.floor(spores), last_seen: new Date().toISOString()
