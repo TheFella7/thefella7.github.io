@@ -55,10 +55,13 @@
         .manual-save-btn { background: #00bb00; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; }
         .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
         .restore-btn { background: #333; color: var(--gold); border: 1px solid var(--gold); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8em; margin: 5px auto; display: block; }
+        .info-list { font-size: 0.85em; padding-left: 15px; margin: 10px 0; }
+        .info-list li { margin-bottom: 5px; color: #ccc; }
         #nameChangeInput { padding: 8px; border-radius: 5px; border: 1px solid var(--neon); background: #000; color: #fff; width: 60%; }
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
+        .btn-cost { font-size: 0.9em; opacity: 0.9; display: block; margin-top: 1px; }
     </style>
 </head>
 <body onload="initGame()">
@@ -114,6 +117,16 @@
     </div>
 
     <div class="card">
+        <h3>📖 How to Play</h3>
+        <ul class="info-list">
+            <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
+            <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
+            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
+            <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
+        </ul>
+    </div>
+
+    <div class="card">
         <h3>👤 Character Profile</h3>
         <div style="margin-bottom: 10px;">Current Name: <b id="currentNameDisplay" style="color: var(--cyan);">---</b></div>
         <div id="nameChangeSection">
@@ -157,19 +170,29 @@
     <div class="card">
         <h3>⚡ Premium Boosts</h3>
         <div id="paypal-button-container"></div>
+        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£1.69)</p>
         <button class="restore-btn" onclick="restorePurchases()">Restore Multipliers</button>
     </div>
 
     <div class="card">
+        <p style="margin:0 0 10px 0; font-weight:bold; color:var(--cyan); text-align: center;">WORLD RANKINGS</p>
+        <div class="lb-row" style="border-bottom: 2px solid var(--neon); font-weight: bold; color: var(--gold); margin-bottom: 5px;">
+            <span>#</span><span>Player</span><span>LVL</span><span>ASC</span>
+        </div>
         <div id="leaderboardList">Syncing...</div>
     </div>
 
+    <div class="ad-slot" style="min-height: 250px;">
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-8763574694147463" data-ad-slot="8195879662" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script> (window.adsbygoogle = window.adsbygoogle || []).push({}); </script>
+    </div>
+    
     <button class="hard-reset-btn" onclick="hardReset()">HARD RESET PROGRESS</button>
 </main>
 
 <footer>
     <div class="footer-links">
-        <a href="privacy.html">Privacy</a> | <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a> | <a href="terms.html">Terms</a> | <a href="sitemap.xml">Sitemap</a> | <a href="ads.txt">Ads.txt</a>
     </div>
     <p>&copy; 2025 Shrooms Bloom Idle</p>
 </footer>
@@ -221,21 +244,15 @@
         const now = Date.now();
         if (now - lastClickTime < 40) return;
         lastClickTime = now;
-
         const el = document.getElementById('mushroomClicker');
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
 
         if (isFrenzyActive) {
-            frenzyTimer = 15; // Refreshes timer on every click while active
+            frenzyTimer = 15; // Refreshes to 15s every click
         } else if (frenzyCooldown <= 0) {
             frenzyClicks++;
-            if (frenzyClicks >= 50) { 
-                isFrenzyActive = true; 
-                frenzyTimer = 15; 
-                frenzyClicks = 0; 
-                el.classList.add("shroom-frenzy-active"); 
-            }
+            if (frenzyClicks >= 50) { isFrenzyActive = true; frenzyTimer = 15; frenzyClicks = 0; el.classList.add("shroom-frenzy-active"); }
         }
 
         let gain = 1 * getTotalMult(); spores += gain; addXP(1);
@@ -289,7 +306,6 @@
     window.initGame = () => {
         const container = document.getElementById('upgradeContainer');
         for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; }
-        
         const savedRaw = localStorage.getItem("shroom_save_v4_sec");
         if (savedRaw) {
             try {
@@ -298,7 +314,6 @@
                 premiumBoostAdd = s.premiumBoostAdd; playerLvl = s.playerLvl; playerXP = s.playerXP; lastNmChg = s.lastNmChg;
                 frenzyTimer = s.frenzyTimer || 0; frenzyCooldown = s.frenzyCooldown || 0; isFrenzyActive = s.isFrenzyActive || false;
                 for(let k in upgrades) upgrades[k].qty = s.upgradeQtys[k] || 0;
-                
                 let gap = (Date.now() - s.lastTime) / 1000;
                 if (gap > 5) {
                     if (isFrenzyActive) { frenzyTimer = Math.max(0, frenzyTimer - gap); if (frenzyTimer <= 0) isFrenzyActive = false; }
@@ -309,17 +324,17 @@
         }
         if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('currentNameDisplay').textContent = pName; }
         else { document.getElementById('usernameOverlay').style.display = 'flex'; }
-        
         setInterval(() => {
             let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
             if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; } }
             else if (frenzyCooldown > 0) { frenzyCooldown -= dt; }
             spores += getSPS() * dt; autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
-            updateUI();
+            updateUI(); updateClock();
         }, 100);
+        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000);
     };
 
-    window.updateUI = () => {
+    function updateUI() {
         document.getElementById('spores').textContent = format(spores);
         document.getElementById('rate').textContent = format(getSPS());
         document.getElementById('mushroomsUI').textContent = format(mushrooms);
@@ -357,7 +372,7 @@
         document.getElementById('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br><span class="btn-cost">${format(ascCost)} Shrooms</span>`;
         let as = mushrooms, ac = 0, an = ascCost; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
         document.getElementById('tag-ascend').textContent = "+" + ac;
-    };
+    }
 
     window.changePlayerName = async () => {
         const cooldown = 30 * 24 * 60 * 60 * 1000;
@@ -368,14 +383,14 @@
             return;
         }
         const n = document.getElementById('nameChangeInput').value.trim();
-        if (n.length >= 2 && n.length <= 15) {
-            pName = n; lastNmChg = Date.now();
-            document.getElementById('currentNameDisplay').textContent = pName;
-            saveGame(true); alert("Name changed!");
-        }
+        if (n.length >= 2 && n.length <= 15) { pName = n; lastNmChg = Date.now(); document.getElementById('currentNameDisplay').textContent = pName; saveGame(true); alert("Name changed!"); }
     };
 
+    window.updateClock = () => { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     window.confirmUsername = () => { let i = document.getElementById('playerNameInput').value.trim(); if(i.length>=2){ pName=i; document.getElementById('usernameOverlay').style.display='none'; saveGame(true); } };
+    window.loadLeaderboard = async () => { try { const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).limit(10); if (data) { document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${p.level}</span><span>${p.ascensions}</span></div>`).join(''); } } catch(e){} };
+    window.fetchChat = async () => { /*supabase chat*/ };
+    window.clearUnread = () => { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; };
 })();
 </script>
 </body>
