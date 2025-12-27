@@ -57,7 +57,6 @@
         .restore-btn { background: #333; color: var(--gold); border: 1px solid var(--gold); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8em; margin: 5px auto; display: block; }
         .info-list { font-size: 0.85em; padding-left: 15px; margin: 10px 0; }
         .info-list li { margin-bottom: 5px; color: #ccc; }
-        #nameChangeInput { padding: 8px; border-radius: 5px; border: 1px solid var(--neon); background: #000; color: #fff; width: 60%; }
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
@@ -124,15 +123,6 @@
             <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
             <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
         </ul>
-    </div>
-
-    <div class="card">
-        <h3>👤 Character Profile</h3>
-        <div style="margin-bottom: 10px;">Current Name: <b id="currentNameDisplay" style="color: var(--cyan);">---</b></div>
-        <div id="nameChangeSection">
-            <input type="text" id="nameChangeInput" maxlength="15" placeholder="New Name...">
-            <button onclick="changePlayerName()" style="padding: 8px 15px; border-radius: 8px; background: var(--gold); color: #000; border: none; font-weight:bold; cursor:pointer;">Change</button>
-        </div>
     </div>
 
     <div class="card">
@@ -205,7 +195,7 @@
     const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-    let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, lastNmChg = 0;
+    let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0;
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     let lastChatId = null, unreadCount = 0;
@@ -227,8 +217,8 @@
         return hash.toString();
     }
 
-    window.format = (n) => {
-        if (!n || isNaN(n) || n < 0) return "0";
+    window.format = function(n) {
+        if (n === null || n === undefined || isNaN(n) || n < 0) return "0";
         if (n < 1000) return Math.floor(n).toLocaleString();
         const abbrevs = ["k", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
         let tier = Math.floor(Math.log10(n) / 3);
@@ -240,21 +230,17 @@
     function getTotalMult() { return (1 + (premiumBoostAdd || 0) + (ascensionTimes * 1.0)) * (isFrenzyActive ? 5 : 1); }
     function getSPS() { let s = 0; for (let k in upgrades) s += (upgrades[k].qty * upgrades[k].rate); return s * getTotalMult(); }
 
-    window.clickMushroom = (e) => {
+    window.clickMushroom = function(e) {
         const now = Date.now();
-        if (now - lastClickTime < 40) return;
+        if (now - lastClickTime < 40) return; 
         lastClickTime = now;
         const el = document.getElementById('mushroomClicker');
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
-
-        if (isFrenzyActive) {
-            frenzyTimer = 15; // Refreshes timer on every click
-        } else if (frenzyCooldown <= 0) {
+        if (!isFrenzyActive && frenzyCooldown <= 0) {
             frenzyClicks++;
             if (frenzyClicks >= 50) { isFrenzyActive = true; frenzyTimer = 15; frenzyClicks = 0; el.classList.add("shroom-frenzy-active"); }
         }
-
         let gain = 1 * getTotalMult(); spores += gain; addXP(1);
         const f = document.createElement("div"); f.className = "float-text"; f.textContent = "+" + format(gain);
         f.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + "px"; 
@@ -264,74 +250,75 @@
     };
 
     function addXP(amount) {
+        if (isNaN(amount) || amount <= 0) return;
         playerXP += amount;
         let next = getNextXP();
-        while (playerXP >= next) { playerXP -= next; playerLvl++; next = getNextXP(); }
+        let safety = 0;
+        while (playerXP >= next && safety < 100) {
+            playerXP -= next; playerLvl++; next = getNextXP(); safety++;
+        }
     }
 
-    window.buyUpgrade = (id, isMax) => {
-        let u = upgrades[id];
-        if (isMax) { while (spores >= u.base * Math.pow(u.growth, u.qty)) { spores -= u.base * Math.pow(u.growth, u.qty); u.qty++; } }
-        else { let cost = u.base * Math.pow(u.growth, u.qty); if (spores >= cost) { spores -= cost; u.qty++; } }
+    window.buyUpgrade = function(id, isMax = false) {
+        let u = upgrades[id]; if(!u) return;
+        if (isMax) { 
+            let safety = 0; let currentCost = u.base * Math.pow(u.growth, u.qty);
+            while (spores >= currentCost && safety < 1000) { spores -= currentCost; u.qty++; currentCost = u.base * Math.pow(u.growth, u.qty); safety++; }
+        } else { let cost = u.base * Math.pow(u.growth, u.qty); if (spores >= cost) { spores -= cost; u.qty++; } }
         updateUI(); saveGame(false);
     };
 
-    window.buyMushroom = (isMax) => {
+    window.buyMushroom = function(isMax) {
         const b = 3000, g = 1.2;
-        if (isMax) { while (spores >= b * Math.pow(g, mushrooms)) { spores -= b * Math.pow(g, mushrooms); mushrooms++; } }
-        else { let cost = b * Math.pow(g, mushrooms); if (spores >= cost) { spores -= cost; mushrooms++; } }
+        if (isMax) { 
+            let safety = 0; let currentCost = b * Math.pow(g, mushrooms);
+            while (spores >= currentCost && safety < 1000) { spores -= currentCost; mushrooms++; currentCost = b * Math.pow(g, mushrooms); safety++; }
+        } else { let c = b * Math.pow(g, mushrooms); if (spores >= c) { spores -= c; mushrooms++; } }
         updateUI(); saveGame(false);
     };
 
-    window.ascend = (isMax) => {
-        const b = 50, g = 1.08;
-        if (isMax) { while (mushrooms >= b * Math.pow(g, ascensionTimes)) { mushrooms -= b * Math.pow(g, ascensionTimes); ascensionTimes++; } }
-        else { let cost = b * Math.pow(g, ascensionTimes); if (mushrooms >= cost) { mushrooms -= cost; ascensionTimes++; } }
-        spores = 0; playerLvl = 1; playerXP = 0; for(let k in upgrades) upgrades[k].qty = 0;
-        updateUI(); saveGame(true);
+    window.ascend = function(isMax) {
+        const b = 50, g = 1.08; let count = 0;
+        if (isMax) {
+            let currentCost = b * Math.pow(g, ascensionTimes);
+            while (mushrooms >= currentCost && count < 100) { mushrooms -= currentCost; ascensionTimes++; count++; currentCost = b * Math.pow(g, ascensionTimes); }
+        } else { let c = b * Math.pow(g, ascensionTimes); if (mushrooms >= c) { mushrooms -= c; ascensionTimes++; count++; } }
+        if (count > 0) { spores = 0; playerLvl = 1; playerXP = 0; for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); }
+        updateUI();
     };
 
-    window.saveGame = async (indicator) => {
+    window.saveGame = async function(indicator) {
         if (!pName) return;
-        const d = { 
-            spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
-            lastTime: Date.now(), lastNmChg, frenzyTimer, frenzyCooldown, isFrenzyActive,
-            upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
-        };
+        const saveTime = Date.now();
+        const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, lastTime: saveTime, upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) };
         d.h = generateHash(d);
         localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
-        if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(()=>document.getElementById('saveStatus').style.opacity="0", 2000); }
+        if(indicator && document.getElementById('saveStatus')) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => document.getElementById('saveStatus').style.opacity = "0", 2000); }
     };
 
-    window.initGame = () => {
+    window.initGame = function() {
         const container = document.getElementById('upgradeContainer');
-        for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; }
+        if(container) { container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } }
         const savedRaw = localStorage.getItem("shroom_save_v4_sec");
         if (savedRaw) {
             try {
                 const s = JSON.parse(atob(savedRaw));
-                spores = s.spores; mushrooms = s.mushrooms; ascensionTimes = s.ascensionTimes; pName = s.pName;
-                premiumBoostAdd = s.premiumBoostAdd; playerLvl = s.playerLvl; playerXP = s.playerXP; lastNmChg = s.lastNmChg || 0;
-                frenzyTimer = s.frenzyTimer || 0; frenzyCooldown = s.frenzyCooldown || 0; isFrenzyActive = s.isFrenzyActive || false;
-                for(let k in upgrades) upgrades[k].qty = s.upgradeQtys[k] || 0;
-                let gap = (Date.now() - s.lastTime) / 1000;
-                if (gap > 5) {
-                    if (isFrenzyActive) { frenzyTimer = Math.max(0, frenzyTimer - gap); if (frenzyTimer <= 0) isFrenzyActive = false; }
-                    else if (frenzyCooldown > 0) { frenzyCooldown = Math.max(0, frenzyCooldown - gap); }
-                    spores += getSPS() * gap;
+                if (s.h === generateHash(s)) {
+                    spores = s.spores; mushrooms = s.mushrooms; ascensionTimes = s.ascensionTimes; pName = s.pName; premiumBoostAdd = s.premiumBoostAdd; playerLvl = s.playerLvl; playerXP = s.playerXP;
+                    for(let k in upgrades) upgrades[k].qty = s.upgradeQtys[k] || 0;
                 }
             } catch(e) {}
         }
-        if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('currentNameDisplay').textContent = pName; }
+        if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; } 
         else { document.getElementById('usernameOverlay').style.display = 'flex'; }
         setInterval(() => {
             let now = Date.now(), dt = (now - lastUpdate) / 1000; lastUpdate = now;
-            if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; } }
+            if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; } } 
             else if (frenzyCooldown > 0) { frenzyCooldown -= dt; }
-            spores += getSPS() * dt; autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
+            let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
+            autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
             updateUI(); updateClock();
         }, 100);
-        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000);
     };
 
     function updateUI() {
@@ -340,67 +327,45 @@
         document.getElementById('mushroomsUI').textContent = format(mushrooms);
         document.getElementById('ascCountUI').textContent = format(ascensionTimes);
         document.getElementById('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
+        document.getElementById('lvlUI').textContent = playerLvl;
         
-        const fStatus = document.getElementById('frenzyStatus'), fFill = document.getElementById('frenzyFill');
-        if (isFrenzyActive) { 
-            fStatus.textContent = "Frenzy x5 is Active (" + Math.ceil(frenzyTimer) + "s)"; 
-            fFill.style.width = (frenzyTimer / 15 * 100) + "%"; 
-            document.getElementById('mushroomClicker').classList.add("shroom-frenzy-active");
-        } else if (frenzyCooldown > 0) { 
-            fStatus.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; 
-            fFill.style.width = (100 - (frenzyCooldown / 600 * 100)) + "%"; 
-            document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active");
-        } else { 
-            fStatus.textContent = `READY: ${frenzyClicks}/50 CLICKS`; 
-            fFill.style.width = (frenzyClicks / 50 * 100) + "%"; 
-        }
-
+        let nextXP = getNextXP(); let pct = Math.min(100, Math.floor((playerXP / nextXP) * 100));
+        document.getElementById('xpPct').textContent = pct;
+        document.getElementById('xpFill').style.width = pct + "%";
+        
         for (let k in upgrades) {
-            let u = upgrades[k], cost = u.base * Math.pow(u.growth, u.qty);
-            let btn = document.getElementById('btn-'+k);
-            btn.innerHTML = `${u.name} (${u.qty})<br><span class="btn-cost">${format(cost)}</span>`;
-            let ts = spores, tc = 0, n = cost; while(ts >= n && tc < 1000) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
-            let tag = document.getElementById('tag-'+k); tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none";
+            let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
+            document.getElementById('btn-'+k).innerHTML = `${u.name} (${u.qty})<br><span class="btn-cost">${format(cost)}</span>`; 
+            document.getElementById('btn-'+k).disabled = spores < cost;
+            
+            // Fixed Afford Tags logic
+            let ts = spores, tc = 0, n = cost; 
+            while(ts >= n && tc < 1000) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
+            let tag = document.getElementById('tag-'+k);
+            tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none";
         }
 
-        let mushCost = 3000 * Math.pow(1.2, mushrooms);
-        document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br><span class="btn-cost">${format(mushCost)}</span>`;
-        let ms = spores, mc = 0, mn = mushCost; while(ms >= mn && mc < 1000) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
-        document.getElementById('tag-mushrooms').textContent = "+" + mc;
-        
-        let ascCost = 50 * Math.pow(1.08, ascensionTimes);
-        document.getElementById('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br><span class="btn-cost">${format(ascCost)} Shrooms</span>`;
-        let as = mushrooms, ac = 0, an = ascCost; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
-        document.getElementById('tag-ascend').textContent = "+" + ac;
+        let mCost = 3000 * Math.pow(1.2, mushrooms);
+        document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br><span class="btn-cost">${format(mCost)}</span>`;
+        document.getElementById('buyMushroomBtn').disabled = spores < mCost;
+        let ms = spores, mc = 0, mn = mCost; while(ms >= mn && mc < 1000) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
+        document.getElementById('tag-mushrooms').textContent = "+" + mc; document.getElementById('tag-mushrooms').style.display = mc > 0 ? "block" : "none";
     }
 
-    window.changePlayerName = async () => {
-        const cooldown = 30 * 24 * 60 * 60 * 1000;
-        const timeSince = Date.now() - lastNmChg;
-        if (timeSince < cooldown) {
-            const days = Math.ceil((cooldown - timeSince) / (1000 * 60 * 60 * 24));
-            alert(`You can change your name again in ${days} days.`);
-            return;
-        }
-        const n = document.getElementById('nameChangeInput').value.trim();
-        if (n.length >= 2 && n.length <= 15) { pName = n; lastNmChg = Date.now(); document.getElementById('currentNameDisplay').textContent = pName; saveGame(true); alert("Name changed!"); }
-    };
+    window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; saveGame(true); } };
+    window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
+    window.clearUnread = function() { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; };
+    window.hardReset = function() { if(confirm("Hard reset spores and upgrades?")) { spores = 0; playerLvl = 1; playerXP = 0; for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); updateUI(); } };
 
-    window.updateClock = () => { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
-    window.confirmUsername = () => { let i = document.getElementById('playerNameInput').value.trim(); if(i.length>=2){ pName=i; document.getElementById('usernameOverlay').style.display='none'; saveGame(true); } };
-    window.loadLeaderboard = async () => { try { const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).limit(10); if (data) { document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>${p.level}</span><span>${p.ascensions}</span></div>`).join(''); } } catch(e){} };
-    window.fetchChat = async () => { /*supabase chat*/ };
-    window.clearUnread = () => { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; };
-
-    // PAYPAL INITIALIZATION
     if(window.paypal) {
         paypal.Buttons({ 
             style: { shape: 'pill', color: 'gold', height: 40 }, 
             createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-            onApprove: (d, a) => a.order.capture().then(async o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); try { await supabaseClient.from('purchases').upsert({ username: pName, total_boost: premiumBoostAdd }); } catch(e){} } }) 
+            onApprove: (d, a) => a.order.capture().then(async o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); updateUI(); } }) 
         }).render('#paypal-button-container');
     }
 })();
 </script>
 </body>
 </html>
+
