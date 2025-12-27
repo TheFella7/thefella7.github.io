@@ -358,7 +358,6 @@
                     spores = Number(s.spores) || 0; mushrooms = Number(s.mushrooms) || 0; ascensionTimes = Number(s.ascensionTimes) || 0; pName = s.pName || ""; premiumBoostAdd = Number(s.premiumBoostAdd) || 0; playerLvl = Number(s.playerLvl) || 1; playerXP = Number(s.playerXP) || 0;
                     if(s.upgradeQtys) for(let k in upgrades) if(s.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(s.upgradeQtys[k]);
                     
-                    // FIXED: Cooldown logic calculation based on last seen time
                     let gap = (Date.now() - (s.lastTime || Date.now())) / 1000;
                     frenzyCooldown = Math.max(0, (Number(s.frenzyCooldown) || 0) - gap);
                     
@@ -380,7 +379,7 @@
             if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); } } 
             else if (frenzyCooldown > 0) frenzyCooldown -= dt;
             let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
-            autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
+            autoSaveCounter += dt; if (autoSaveCounter >= 1) { saveGame(false); autoSaveCounter = 0; }
             updateUI();
         }, 100);
         
