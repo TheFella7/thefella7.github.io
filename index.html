@@ -355,13 +355,17 @@
             try {
                 const s = JSON.parse(atob(savedRaw));
                 if (s.h === generateHash(s)) {
-                    spores = Number(s.spores) || 0; mushrooms = Number(s.mushrooms) || 0; ascensionTimes = Number(s.ascensionTimes) || 0; pName = s.pName || ""; premiumBoostAdd = Number(s.premiumBoostAdd) || 0; playerLvl = Number(s.playerLvl) || 1; playerXP = Number(s.playerXP) || 0; frenzyCooldown = Number(s.frenzyCooldown) || 0;
+                    spores = Number(s.spores) || 0; mushrooms = Number(s.mushrooms) || 0; ascensionTimes = Number(s.ascensionTimes) || 0; pName = s.pName || ""; premiumBoostAdd = Number(s.premiumBoostAdd) || 0; playerLvl = Number(s.playerLvl) || 1; playerXP = Number(s.playerXP) || 0;
                     if(s.upgradeQtys) for(let k in upgrades) if(s.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(s.upgradeQtys[k]);
-                }
-                let gap = Math.min(86400, (Date.now() - (s.lastTime || Date.now())) / 1000);
-                if (gap > 5) { 
-                    let earned = getSPS() * gap; 
-                    if (earned > 0) { spores += earned; addXP(earned * 0.05); document.getElementById('offlineGain').textContent = "+" + format(earned); document.getElementById('offlineModal').style.display = 'flex'; } 
+                    
+                    // FIXED: Cooldown logic calculation based on last seen time
+                    let gap = (Date.now() - (s.lastTime || Date.now())) / 1000;
+                    frenzyCooldown = Math.max(0, (Number(s.frenzyCooldown) || 0) - gap);
+                    
+                    if (gap > 5) { 
+                        let earned = getSPS() * Math.min(86400, gap); 
+                        if (earned > 0) { spores += earned; addXP(earned * 0.05); document.getElementById('offlineGain').textContent = "+" + format(earned); document.getElementById('offlineModal').style.display = 'flex'; } 
+                    }
                 }
             } catch(e) {}
         }
@@ -408,13 +412,11 @@
             let tag = getEl('tag-'+k); if(tag) { tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none"; }
         }
 
-        // FIXED: Mushroom tag calculation
         let mC = 3000 * Math.pow(1.2, mushrooms);
         getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${Math.floor(mushrooms)})<br><span class="btn-cost">${format(mC)}</span>`; getEl('buyMushroomBtn').disabled = spores < mC;
         let ms = spores, mc = 0, mn = mC; while(ms >= mn && mc < 1000) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
         let tM = getEl('tag-mushrooms'); if(tM) { tM.textContent = "+" + mc; tM.style.display = mc > 0 ? "block" : "none"; }
 
-        // FIXED: Ascension tag calculation
         let aC = 50 * Math.pow(1.08, ascensionTimes);
         getEl('ascendBtn').innerHTML = `Ascend (${Math.floor(ascensionTimes)})<br><span class="btn-cost">${format(aC)} Shrooms</span>`; getEl('ascendBtn').disabled = mushrooms < aC;
         let as = mushrooms, ac = 0, an = aC; while(as >= an && ac < 100) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
@@ -518,3 +520,4 @@
 </script>
 </body>
 </html>
+
