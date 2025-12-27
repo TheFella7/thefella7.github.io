@@ -23,7 +23,6 @@
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
-        /* UPDATED: Top Left Mail Notification */
         #mailNotif { position: fixed; top: 15px; left: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
         
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
@@ -124,7 +123,7 @@
         <ul class="info-list">
             <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
             <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
-            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
+            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost! <b>Clicking during Frenzy refreshes the timer.</b></li>
             <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
         </ul>
     </div>
@@ -245,7 +244,6 @@
         return s * getTotalMult();
     }
 
-    // NAME CHANGE LOGIC
     window.requestNameChange = function() {
         const lastChange = localStorage.getItem("shroom_last_name_change") || 0;
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
@@ -259,12 +257,11 @@
 
         const newName = prompt("Enter your new name (2-15 characters):", pName);
         if (newName && newName.trim().length >= 2 && newName.trim().length <= 15) {
-            const oldName = pName;
             pName = newName.trim();
             localStorage.setItem("shroom_last_name_change", Date.now());
             document.getElementById('displayUsername').innerHTML = `Shroomer: ${pName} <button class="change-name-btn" onclick="requestNameChange()">Change Name</button>`;
             saveGame(true);
-            alert("Name updated successfully! Changes will reflect on the leaderboard shortly.");
+            alert("Name updated!");
         }
     };
 
@@ -286,9 +283,17 @@
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
         
-        if (!isFrenzyActive && frenzyCooldown <= 0) {
+        // UPDATED: Frenzy Refresh Logic
+        if (isFrenzyActive) {
+            frenzyTimer = 15; // Reset timer to 15s on every click during frenzy
+        } else if (frenzyCooldown <= 0) {
             frenzyClicks++;
-            if (frenzyClicks >= 50) { isFrenzyActive = true; frenzyTimer = 15; frenzyClicks = 0; el.classList.add("shroom-frenzy-active"); }
+            if (frenzyClicks >= 50) { 
+                isFrenzyActive = true; 
+                frenzyTimer = 15; 
+                frenzyClicks = 0; 
+                el.classList.add("shroom-frenzy-active"); 
+            }
         }
         
         let gain = 1 * getTotalMult(); spores += gain; addXP(1);
@@ -403,7 +408,14 @@
             if(dt > 2 || dt < 0) dt = 0.1; 
             lastUpdate = now;
             updateClock();
-            if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); } } 
+            if (isFrenzyActive) { 
+                frenzyTimer -= dt; 
+                if (frenzyTimer <= 0) { 
+                    isFrenzyActive = false; 
+                    frenzyCooldown = 600; 
+                    document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); 
+                } 
+            } 
             else if (frenzyCooldown > 0) { frenzyCooldown -= dt; }
             let sps = getSPS(); spores += sps * dt; if (sps > 0) addXP(sps * dt * 0.1);
             autoSaveCounter += dt; if (autoSaveCounter >= 20) { saveGame(false); autoSaveCounter = 0; }
@@ -471,11 +483,9 @@
                 const reversed = data.reverse();
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
-                    
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
-                        
                         const mailNotif = document.getElementById('mailNotif');
                         const unreadSpan = document.getElementById('unreadCount');
                         if(mailNotif && unreadCount > 0) {
