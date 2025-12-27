@@ -23,10 +23,7 @@
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
-        
-        /* UPDATED: Top Left Mail Notification */
         #mailNotif { position: fixed; top: 15px; left: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
-        
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg); border: 2px solid var(--neon); padding: 30px; border-radius: 20px; max-width: 300px; box-shadow: 0 0 30px var(--neon); }
@@ -249,7 +246,6 @@
         return s * getTotalMult();
     }
 
-    // UPDATED: Click Mushroom logic to refresh Frenzy Timer if active
     window.clickMushroom = function(e) {
         const now = Date.now();
         const diff = now - lastClickTime;
@@ -268,7 +264,6 @@
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
         
-        // REFRESH TIMER IF ACTIVE
         if (isFrenzyActive) {
             frenzyTimer = 15; 
         } else if (frenzyCooldown <= 0) {
@@ -332,7 +327,6 @@
         for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); 
     }
 
-    // UPDATED: Added frenzyCooldown to save data
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -344,7 +338,7 @@
         const saveTime = Date.now();
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
-            frenzyCooldown, // Added this
+            frenzyCooldown,
             lastTime: saveTime, 
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
@@ -364,7 +358,6 @@
         }
     };
 
-    // UPDATED: Load frenzyCooldown from save data
     window.initGame = function() {
         const container = document.getElementById('upgradeContainer');
         if(container) { container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } }
@@ -374,7 +367,7 @@
                 const saved = JSON.parse(atob(savedRaw));
                 if (saved.h !== generateHash(saved)) { spores = 0; } else {
                     spores = Number(saved.spores) || 0; mushrooms = Number(saved.mushrooms) || 0; ascensionTimes = Number(saved.ascensionTimes) || 0; pName = saved.pName || ""; premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; playerLvl = Number(saved.playerLvl) || 1; playerXP = Number(saved.playerXP) || 0;
-                    frenzyCooldown = Number(saved.frenzyCooldown) || 0; // Loaded here
+                    frenzyCooldown = Number(saved.frenzyCooldown) || 0;
                     if(saved.upgradeQtys) { for(let k in upgrades) { if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]); } }
                 }
                 let now = Date.now(); let gap = (now - (saved.lastTime || now)) / 1000;
@@ -486,11 +479,14 @@
     window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
     window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     
+    // UPDATED: Hard reset now clears every variable and local storage
     window.hardReset = function() {
-        if(confirm("Hard reset? Spores and Upgrades will be lost. (Ascensions and Permanent Multipliers will be kept)")) { 
-            spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0;
+        if(confirm("FULL RESET? This will delete EVERYTHING including Shrooms, Ascensions, Name, and Premium Multipliers. You cannot undo this.")) { 
+            localStorage.clear();
+            spores = 0; mushrooms = 0; ascensionTimes = 0; pName = ""; premiumBoostAdd = 0;
+            playerLvl = 1; playerXP = 0; frenzyCooldown = 0; frenzyTimer = 0; isFrenzyActive = false;
             for (let k in upgrades) upgrades[k].qty = 0;
-            saveGame(true); updateUI();
+            location.reload(); 
         }
     };
 
