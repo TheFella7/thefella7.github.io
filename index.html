@@ -24,8 +24,8 @@
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
-        /* NEW: Top Right Mail Notification */
-        #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
+        /* UPDATED: Top Left Mail Notification */
+        #mailNotif { position: fixed; top: 15px; left: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
         
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
         #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; }
@@ -127,7 +127,7 @@
         <ul class="info-list">
             <li><b>Click the Mushroom:</b> Manually harvest spores and gain XP.</li>
             <li><b>Hire Collectors:</b> Buy upgrades to generate spores automatically.</li>
-            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost for 15 seconds!</li>
+            <li><b>Frenzy Mode:</b> Click enough times to trigger a 5x boost. Keep clicking to stay in Frenzy!</li>
             <li><b>Ascend:</b> Once you have enough Shrooms, Ascend for a permanent multiplier.</li>
         </ul>
     </div>
@@ -206,7 +206,6 @@
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     
-    // Notification variables
     let lastChatId = null;
     let unreadCount = 0;
 
@@ -250,6 +249,7 @@
         return s * getTotalMult();
     }
 
+    // UPDATED: Click Mushroom logic to refresh Frenzy Timer if active
     window.clickMushroom = function(e) {
         const now = Date.now();
         const diff = now - lastClickTime;
@@ -268,9 +268,17 @@
         el.classList.add('shroom-click');
         setTimeout(() => el.classList.remove('shroom-click'), 50);
         
-        if (!isFrenzyActive && frenzyCooldown <= 0) {
+        // REFRESH TIMER IF ACTIVE
+        if (isFrenzyActive) {
+            frenzyTimer = 15; 
+        } else if (frenzyCooldown <= 0) {
             frenzyClicks++;
-            if (frenzyClicks >= 50) { isFrenzyActive = true; frenzyTimer = 15; frenzyClicks = 0; el.classList.add("shroom-frenzy-active"); }
+            if (frenzyClicks >= 50) { 
+                isFrenzyActive = true; 
+                frenzyTimer = 15; 
+                frenzyClicks = 0; 
+                el.classList.add("shroom-frenzy-active"); 
+            }
         }
         
         let gain = 1 * getTotalMult(); spores += gain; addXP(1);
@@ -324,6 +332,7 @@
         for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); 
     }
 
+    // UPDATED: Added frenzyCooldown to save data
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -335,6 +344,7 @@
         const saveTime = Date.now();
         const d = { 
             spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
+            frenzyCooldown, // Added this
             lastTime: saveTime, 
             upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
         };
@@ -354,6 +364,7 @@
         }
     };
 
+    // UPDATED: Load frenzyCooldown from save data
     window.initGame = function() {
         const container = document.getElementById('upgradeContainer');
         if(container) { container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } }
@@ -363,6 +374,7 @@
                 const saved = JSON.parse(atob(savedRaw));
                 if (saved.h !== generateHash(saved)) { spores = 0; } else {
                     spores = Number(saved.spores) || 0; mushrooms = Number(saved.mushrooms) || 0; ascensionTimes = Number(saved.ascensionTimes) || 0; pName = saved.pName || ""; premiumBoostAdd = Number(saved.premiumBoostAdd) || 0; playerLvl = Number(saved.playerLvl) || 1; playerXP = Number(saved.playerXP) || 0;
+                    frenzyCooldown = Number(saved.frenzyCooldown) || 0; // Loaded here
                     if(saved.upgradeQtys) { for(let k in upgrades) { if(saved.upgradeQtys[k] !== undefined) upgrades[k].qty = Number(saved.upgradeQtys[k]); } }
                 }
                 let now = Date.now(); let gap = (now - (saved.lastTime || now)) / 1000;
@@ -436,7 +448,6 @@
     window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; document.getElementById('playerNameInput').value = pName; };
     window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     
-    // NOTIFICATION CLEARING LOGIC
     window.clearUnread = function() {
         unreadCount = 0;
         document.getElementById('mailNotif').style.display = 'none';
@@ -452,7 +463,6 @@
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
                     
-                    // NEW: Persistent Unread Logic
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
