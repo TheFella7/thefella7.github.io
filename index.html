@@ -303,7 +303,7 @@
     }
 
     window.saveGame = async function(indicator) {
-        if (!pName) return;
+        if (!pName && indicator !== "FORCE") return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
         const maxPossibleGain = (getSPS() * timePassed * 1.5) + (timePassed * 25 * getTotalMult());
         const actualGain = spores - lastSporesAmount;
@@ -319,12 +319,14 @@
         localStorage.setItem("shroom_save_v4_sec", encrypted);
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
-        try { 
-            await supabaseClient.from('leaderboard').upsert({ 
-                username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString()
-            }, { onConflict: 'username' }); 
-        } catch(e) {}
-        if(indicator && document.getElementById('saveStatus')) { 
+        if (pName) {
+            try { 
+                await supabaseClient.from('leaderboard').upsert({ 
+                    username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString()
+                }, { onConflict: 'username' }); 
+            } catch(e) {}
+        }
+        if(indicator && indicator !== "FORCE" && document.getElementById('saveStatus')) { 
             document.getElementById('saveStatus').style.opacity = "1"; 
             setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); 
         }
@@ -427,20 +429,18 @@
     window.fetchOnlineCount = async function() { try { const oneMinAgo = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', oneMinAgo); if (!error && count !== null) { document.getElementById('onlineNum').textContent = count; } } catch(e) {} };
     window.restorePurchases = async function() { try { const { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('username', pName).single(); if (data && !error) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } } catch(e) { } };
     
-    // UPDATED: hardReset function now correctly allows name change by clearing pName and LocalStorage
     window.hardReset = function() {
-        if(confirm("Hard reset? Spores and Upgrades will be lost. (Ascensions and Permanent Multipliers will be kept). This will allow you to change your name.")) { 
-            spores = 0; mushrooms = 0; playerLvl = 1; playerXP = 0;
+        if(confirm("Hard reset? Spores and Upgrades will be lost. KEEPS Ascensions and Permanent Multipliers. This will allow you to change your name.")) { 
+            spores = 0; 
+            playerLvl = 1; 
+            playerXP = 0;
             for (let k in upgrades) upgrades[k].qty = 0;
             
-            // 1. Explicitly clear the name variable
             pName = ""; 
             
-            // 2. Clear the browser's save file to prevent auto-login on refresh
-            localStorage.removeItem("shroom_save_v4_sec"); 
-            
-            // 3. Reload the page to reset the app state and trigger the naming overlay
-            location.reload(); 
+            saveGame("FORCE").then(() => {
+                location.reload(); 
+            });
         }
     };
 
