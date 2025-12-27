@@ -18,11 +18,13 @@
         * { -webkit-tap-highlight-color: transparent; outline: none; }
         #topBar { padding: 10px; position: sticky; top: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 2px solid var(--neon); }
         #title { font-size: 1.4em; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); margin: 0; }
-        #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; cursor: pointer; }
+        #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        #changeNameBtn { background: none; border: 1px solid var(--cyan); color: var(--cyan); font-size: 0.7em; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
         #liveClock { font-size: 0.75em; color: #fff; opacity: 0.8; margin-top: 5px; font-family: monospace; }
         #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; text-align: right; }
         #lastSavedTime { display: block; font-size: 0.85em; color: var(--gold); font-weight: bold; }
         
+        /* NEW: Top Right Mail Notification */
         #mailNotif { position: fixed; top: 15px; right: 15px; background: var(--neon); color: white; padding: 5px 10px; border-radius: 8px; font-size: 0.9em; font-weight: bold; z-index: 200; box-shadow: 0 0 10px var(--neon); cursor: pointer; display: none; border: 1px solid white; }
         
         #onlineCounter { font-size: 0.7em; color: var(--xp); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
@@ -87,7 +89,10 @@
 <div id="topBar">
     <div id="saveStatus">SAVED <span id="lastSavedTime">--:--:--</span></div>
     <div id="title">🍄 SHROOMS BLOOM 🍄</div>
-    <div id="displayUsername" onclick="document.getElementById('usernameOverlay').style.display='flex'">Connecting...</div>
+    <div id="displayUsername">
+        <span id="nameText">Connecting...</span>
+        <button id="changeNameBtn" onclick="openNameChange()">Change</button>
+    </div>
     <div id="onlineCounter">Players Online: <span id="onlineNum">1</span></div>
     <div id="liveClock">Loading Date/Time...</div>
 </div>
@@ -369,7 +374,7 @@
             } catch(e) {}
         }
         lastSporesAmount = spores;
-        if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('displayUsername').textContent = "Shroomer: " + pName; } 
+        if (pName) { document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('nameText').textContent = "Shroomer: " + pName; } 
         else { document.getElementById('usernameOverlay').style.display = 'flex'; }
         setInterval(() => {
             let now = Date.now(), dt = (now - lastUpdate) / 1000; 
@@ -427,26 +432,11 @@
     }
 
     window.closeOfflineModal = function() { document.getElementById('offlineModal').style.display = 'none'; saveGame(true); };
-    
-    window.confirmUsername = function() { 
-        let i = document.getElementById('playerNameInput').value.trim(); 
-        if (i.length >= 2 && i.length <= 15) { 
-            let oldName = pName;
-            pName = i; 
-            document.getElementById('usernameOverlay').style.display = 'none'; 
-            document.getElementById('displayUsername').textContent = "Shroomer: " + pName; 
-            saveGame(true);
-            if(oldName && oldName !== pName) {
-                // If they change name, we can also trigger a leaderboard update
-                supabaseClient.from('leaderboard').delete().eq('username', oldName).then(() => {
-                    saveGame(true);
-                });
-            }
-        } 
-    };
-    
+    window.confirmUsername = function() { let i = document.getElementById('playerNameInput').value.trim(); if (i.length >= 2 && i.length <= 15) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('nameText').textContent = "Shroomer: " + pName; saveGame(true); } };
+    window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; document.getElementById('playerNameInput').value = pName; };
     window.updateClock = function() { const el = document.getElementById('liveClock'); if(el) { const now = new Date(); el.textContent = now.toLocaleDateString() + " " + now.toLocaleTimeString(); } };
     
+    // NOTIFICATION CLEARING LOGIC
     window.clearUnread = function() {
         unreadCount = 0;
         document.getElementById('mailNotif').style.display = 'none';
@@ -461,9 +451,12 @@
                 const reversed = data.reverse();
                 if(container) {
                     const currentTopId = reversed[reversed.length - 1]?.id;
+                    
+                    // NEW: Persistent Unread Logic
                     if(lastChatId && currentTopId !== lastChatId) {
                         const newMessages = reversed.filter(m => m.id > lastChatId).length;
                         unreadCount += newMessages;
+                        
                         const mailNotif = document.getElementById('mailNotif');
                         const unreadSpan = document.getElementById('unreadCount');
                         if(mailNotif && unreadCount > 0) {
