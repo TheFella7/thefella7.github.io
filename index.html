@@ -259,19 +259,21 @@
         return n.toExponential(2);
     };
 
-    // Helper: Get Current Week ID (Changes every 7 days)
+    // Updated: Correctly calculates Week ID resetting Sunday 00:00 UTC
     function getCurrentWeekId() {
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        // Uses epoch time to determine unique week number
-        return Math.floor(Date.now() / oneWeek);
+        const offset = 3 * 24 * 60 * 60 * 1000; // Aligns Epoch Thursday to Sunday
+        return Math.floor((Date.now() + offset) / oneWeek);
     }
     
+    // Updated: Fixes the event timer for Sunday 00:00 UTC
     function getEventTimeLeft() {
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        const currentWeek = getCurrentWeekId();
-        const nextWeekStart = (currentWeek + 1) * oneWeek;
-        const diff = nextWeekStart - Date.now();
-        if (diff < 0) return "0h 0m";
+        const now = new Date();
+        const nextSunday = new Date(now);
+        nextSunday.setUTCDate(now.getUTCDate() + (7 - now.getUTCDay()) % 7);
+        nextSunday.setUTCHours(0, 0, 0, 0);
+        if (nextSunday <= now) nextSunday.setUTCDate(nextSunday.getUTCDate() + 7);
+        const diff = nextSunday - now;
         const d = Math.floor(diff / (24*60*60*1000));
         const h = Math.floor((diff % (24*60*60*1000)) / (60*60*1000));
         const m = Math.floor((diff % (60*60*1000)) / (60*1000));
@@ -331,7 +333,6 @@
         let u = upgrades[id]; if(!u) return;
         if (isMax) { 
             let s = 0, c = u.base * Math.pow(u.growth, u.qty);
-            // Safety: Recalculate cost every iteration
             while (spores >= c && s < 2000) { 
                 spores -= c; u.qty++; s++; 
                 c = u.base * Math.pow(u.growth, u.qty); 
@@ -370,7 +371,6 @@
 
     function resetForAscend() { 
         spores = 0; playerLvl = 1; playerXP = 0; frenzyCooldown = 0; frenzyTimer = 0; isFrenzyActive = false;
-        // Event spores persist through ascension!
         for (let k in upgrades) upgrades[k].qty = 0; saveGame(true); 
     }
 
@@ -378,27 +378,19 @@
         if (!pName) { openNameChange(); return; }
         if (!joinedEvent) {
             joinedEvent = true;
-            // Update saved week to current so we don't accidentally reset
             savedEventWeekId = getCurrentWeekId();
             updateUI(); saveGame(true);
-            // Register initial entry
             saveGame(false);
         }
     };
 
-    // Check if we need to award prizes from last week
     async function checkEventRewards() {
         const currentWeek = getCurrentWeekId();
-        // If the saved week is less than the current week, the event has ended/reset
         if (savedEventWeekId < currentWeek) {
             const oldWeekId = savedEventWeekId;
-            
-            // 1. Reset for new week locally
             joinedEvent = false;
             eventSpores = 0;
-            savedEventWeekId = currentWeek; // Sync to new week
-            
-            // 2. Check DB for previous week rank (only if we participated)
+            savedEventWeekId = currentWeek; 
             try {
                 const { data, error } = await supabaseClient
                     .from('weekly_leaderboard')
@@ -417,7 +409,6 @@
                     }
 
                     if (rank > 0) {
-                        // Determine Reward
                         let reward = 0;
                         if (rank === 1) reward = 5;
                         else if (rank === 2) reward = 4;
@@ -433,7 +424,6 @@
                     }
                 }
             } catch (e) { console.error("Event Check Error", e); }
-            
             saveGame(true);
         }
         updateUI();
@@ -446,11 +436,9 @@
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
-        
-        // Anti-cheat / Sanity check on gain
         const maxG = (getSPS() * timePassed * 2.0) + (timePassed * 50 * getTotalMult()) + 1000;
         if ((spores - lastSporesAmount) > maxG && lastSporesAmount > 0 && timePassed > 2) {
-             spores = lastSporesAmount + maxG; // Cap the gain
+             spores = lastSporesAmount + maxG; 
         }
 
         const saveTime = Date.now();
@@ -468,22 +456,20 @@
              document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         }
         
-        // Upsert Main Leaderboard
         try { 
             await supabaseClient.from('leaderboard').upsert({ 
                 player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString()
             }, { onConflict: 'player_id' }); 
         } catch(e) {}
 
-        // Upsert Event Leaderboard (if joined)
         if (joinedEvent) {
              try {
                 await supabaseClient.from('weekly_leaderboard').upsert({
-                    week_id: savedEventWeekId, // Part of primary key usually
-                    player_id: playerId,       // Part of primary key
+                    week_id: savedEventWeekId,
+                    player_id: playerId,
                     username: pName,
                     spores: Math.floor(eventSpores)
-                }); // Note: requires conflict on (week_id, player_id)
+                });
              } catch(e) {}
         }
 
@@ -518,8 +504,6 @@
                     eventBoost = Number(s.eventBoost) || 0;
                     playerLvl = Number(s.playerLvl) || 1; 
                     playerXP = Number(s.playerXP) || 0;
-                    
-                    // Event Data
                     joinedEvent = !!s.joinedEvent;
                     eventSpores = Number(s.eventSpores) || 0;
                     savedEventWeekId = Number(s.savedEventWeekId) || getCurrentWeekId();
@@ -528,10 +512,8 @@
                     
                     let gap = (Date.now() - (s.lastTime || Date.now())) / 1000;
                     frenzyCooldown = Math.max(0, (Number(s.frenzyCooldown) || 0) - gap);
-                    
-                    // Offline progress
                     if (gap > 10) { 
-                        let earned = getSPS() * Math.min(86400 * 3, gap); // Cap at 3 days offline
+                        let earned = getSPS() * Math.min(86400 * 3, gap);
                         if (earned > 0) { 
                             spores += earned; 
                             if(joinedEvent) eventSpores += earned;
@@ -548,15 +530,11 @@
         document.getElementById('usernameOverlay').style.display = pName ? 'none' : 'flex';
         if(pName) document.getElementById('nameText').textContent = "Shroomer: " + pName;
         
-        // Handle event week transitions and rewards
         checkEventRewards();
 
-        // Game Loop
         setInterval(() => {
             let now = Date.now(), dt = Math.min(2, (now - lastUpdate) / 1000); lastUpdate = now;
             updateClock();
-            
-            // Frenzy Logic
             if (isFrenzyActive) { 
                 frenzyTimer -= dt; 
                 if (frenzyTimer <= 0) { 
@@ -567,19 +545,13 @@
             } else if (frenzyCooldown > 0) {
                 frenzyCooldown -= dt;
             }
-            
-            // Idle Generation
             let sps = getSPS(); 
             let frameGain = sps * dt;
             spores += frameGain; 
             if(joinedEvent) eventSpores += frameGain;
-            
             if (sps > 0) addXP(sps * dt * 0.1);
-            
-            // Autosave every 30s
             autoSaveCounter += dt; 
             if (autoSaveCounter >= 30) { saveGame(false); autoSaveCounter = 0; }
-            
             updateUI();
         }, 100);
         
@@ -609,31 +581,24 @@
         else if (frenzyCooldown > 0) { fS.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; fF.style.width = (100 - (frenzyCooldown / 600 * 100)) + "%"; }
         else { fS.textContent = `READY: ${frenzyClicks}/50 CLICKS`; fF.style.width = (frenzyClicks / 50 * 100) + "%"; }
 
-        // Upgrades
         for (let k in upgrades) {
             let u = upgrades[k], c = u.base * Math.pow(u.growth, u.qty), btn = getEl('btn-'+k);
             btn.innerHTML = `${u.name} (${Math.floor(u.qty)})<br><span class="btn-cost">${format(c)}</span>`; btn.disabled = spores < c;
-            
-            // Max Calc
             let ts = spores, tc = 0, n = c; 
-            // Cap lookahead to prevent lag
             while(ts >= n && tc < 500) { ts -= n; tc++; n = u.base * Math.pow(u.growth, u.qty + tc); }
             let tag = getEl('tag-'+k); if(tag) { tag.textContent = "+" + tc; tag.style.display = tc > 0 ? "block" : "none"; }
         }
 
-        // Mushroom Buy
         let mC = 3000 * Math.pow(1.2, mushrooms);
         getEl('buyMushroomBtn').innerHTML = `Buy Shroom (${Math.floor(mushrooms)})<br><span class="btn-cost">${format(mC)}</span>`; getEl('buyMushroomBtn').disabled = spores < mC;
         let ms = spores, mc = 0, mn = mC; while(ms >= mn && mc < 200) { ms -= mn; mc++; mn = 3000 * Math.pow(1.2, mushrooms + mc); }
         let tM = getEl('tag-mushrooms'); if(tM) { tM.textContent = "+" + mc; tM.style.display = mc > 0 ? "block" : "none"; }
 
-        // Ascend Buy
         let aC = 50 * Math.pow(1.08, ascensionTimes);
         getEl('ascendBtn').innerHTML = `Ascend (${Math.floor(ascensionTimes)})<br><span class="btn-cost">${format(aC)} Shrooms</span>`; getEl('ascendBtn').disabled = mushrooms < aC;
         let as = mushrooms, ac = 0, an = aC; while(as >= an && ac < 50) { as -= an; ac++; an = 50 * Math.pow(1.08, ascensionTimes + ac); }
         let tA = getEl('tag-ascend'); if(tA) { tA.textContent = "+" + ac; tA.style.display = ac > 0 ? "block" : "none"; }
         
-        // Event UI
         const jBtn = getEl('joinEventBtn');
         if (joinedEvent) {
              jBtn.textContent = "PARTICIPATING";
@@ -692,7 +657,6 @@
         if (msg && pName) { try { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } catch(e){} } 
     };
 
-    // Main Game Leaderboard
     window.loadLeaderboard = async function() { 
         try { 
             const { data, error } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
@@ -703,7 +667,6 @@
         } catch(e) {} 
     };
     
-    // Weekly Event Leaderboard
     window.loadEventLeaderboard = async function() {
         if (!joinedEvent) return;
         try {
@@ -770,4 +733,3 @@
 </script>
 </body>
 </html>
-
