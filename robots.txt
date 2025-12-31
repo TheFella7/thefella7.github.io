@@ -1,6 +1,7 @@
+# Allow all crawlers to access the site
 User-agent: *
 Allow: /
 
-# Specifically allow Googlebot to see everything for ads
-User-agent: Googlebot
-Allow: /
+# Direct crawlers to your sitemap
+Sitemap: https://thefella7.github.io/sitemap.xml
+
