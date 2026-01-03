@@ -210,7 +210,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://www.paypal.com/sdk/js?client-id=AbbfCLxvNQy-PX0DlSdJarGZAHF5fPXVcO0fWdYL56bqdYQTYm2iSGbg04JQnwGGst8JYhKJcodERjC0&currency=GBP&disable-funding=credit,card"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=AY78HzeYTJ6bkhQ9oBPa9hYjzL6Sq9AHmPiBXyZDhYhpeVjRcxCxZfiZGoIm1eeGsdW21-V8uJawNn_N&currency=GBP&disable-funding=credit,card"></script>
 
 <script>
 (function() {
@@ -710,22 +710,31 @@
         }
     };
 
-    if(window.paypal) {
-        paypal.Buttons({ 
-            style: { shape: 'pill', color: 'gold', height: 40 }, 
-            createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), 
-            onApprove: (d, a) => a.order.capture().then(async o => { 
-                if (o.status === "COMPLETED") { 
-                    premiumBoostAdd += 20; saveGame(true); updateUI(); 
-                    try { await supabaseClient.from('purchases').upsert({ player_id: playerId, username: pName, total_boost: premiumBoostAdd }, { onConflict: 'player_id' }); } catch(e){} 
-                } 
-            }) 
-        }).render('#paypal-button-container');
-    }
-
     let dp; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); dp = e; if(document.getElementById('installBtn')) document.getElementById('installBtn').style.display = 'block'; });
     window.installApp = async function() { if (dp) { dp.prompt(); const { outcome } = await dp.userChoice; if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none'; dp = null; } };
+
+    // UPDATED PAYPAL LOGIC WITH POLLING
+    function initPayPal() {
+        if (window.paypal) {
+            paypal.Buttons({
+                style: { shape: 'pill', color: 'gold', height: 40 },
+                createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }),
+                onApprove: (d, a) => a.order.capture().then(async o => {
+                    if (o.status === "COMPLETED") {
+                        premiumBoostAdd += 20; saveGame(true); updateUI();
+                        try { await supabaseClient.from('purchases').upsert({ player_id: playerId, username: pName, total_boost: premiumBoostAdd }, { onConflict: 'player_id' }); } catch(e){}
+                    }
+                })
+            }).render('#paypal-button-container');
+        } else {
+            // Wait 100ms and check again if script hasn't loaded
+            setTimeout(initPayPal, 100);
+        }
+    }
+    initPayPal();
+
 })();
 </script>
 </body>
 </html>
+
