@@ -2,16 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire in this deep idle clicker game.">
+    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0118">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
     <title>🍄 ShroomsBloomIdle 🍄</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
     <style>
         :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; --event: #ff4500; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; user-select: none; }
@@ -153,9 +150,6 @@
         <div class="stat-row" style="color:var(--cyan); border-top: 1px solid #444; margin-top: 8px; padding-top: 8px;">
             <span>Total Multiplier:</span> <b id="totalMultUI">x1.00</b>
         </div>
-        <div class="stat-row" style="font-size:0.8em; color:var(--event);">
-            <span>Event Multiplier:</span> <b id="eventMultUI">x0</b>
-        </div>
     </div>
 
     <div id="upgradeContainer" class="upgrade-grid"></div>
@@ -258,14 +252,16 @@
     };
 
     function getCurrentWeekId() {
+        // Epoch (0) was Thursday. To align with Monday 00:00 UTC, we offset by 4 days (345600000ms)
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        return Math.floor(Date.now() / oneWeek);
+        return Math.floor((Date.now() + 345600000) / oneWeek);
     }
     
     function getEventTimeLeft() {
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
         const currentWeek = getCurrentWeekId();
-        const nextWeekStart = (currentWeek + 1) * oneWeek;
+        // Calculate the start of the next week based on Monday alignment
+        const nextWeekStart = (currentWeek + 1) * oneWeek - 345600000;
         const diff = nextWeekStart - Date.now();
         if (diff < 0) return "0h 0m";
         const d = Math.floor(diff / (24*60*60*1000));
@@ -357,26 +353,63 @@
 
     window.joinEvent = function() {
         if (!pName) { openNameChange(); return; }
-        if (!joinedEvent) { joinedEvent = true; savedEventWeekId = getCurrentWeekId(); updateUI(); saveGame(true); saveGame(false); }
+        const currentWeek = getCurrentWeekId();
+        if (savedEventWeekId !== currentWeek) {
+            // New event started, reset progress
+            savedEventWeekId = currentWeek;
+            eventSpores = 0;
+            joinedEvent = true;
+        } else {
+            joinedEvent = true;
+        }
+        updateUI(); 
+        saveGame(true);
     };
 
     async function checkEventRewards() {
         const currentWeek = getCurrentWeekId();
+        
+        // If the saved week is less than the current week, the event has ended.
         if (savedEventWeekId < currentWeek) {
             const oldWeekId = savedEventWeekId;
-            joinedEvent = false; eventSpores = 0; savedEventWeekId = currentWeek; 
+            
+            // Step 1: Check rewards for the OLD week
             try {
-                const { data, error } = await supabaseClient.from('weekly_leaderboard').select('player_id, spores').eq('week_id', oldWeekId).order('spores', { ascending: false }).limit(5);
+                const { data, error } = await supabaseClient
+                    .from('weekly_leaderboard')
+                    .select('player_id, spores')
+                    .eq('week_id', oldWeekId)
+                    .order('spores', { ascending: false })
+                    .limit(5);
+
                 if (data && !error) {
                     let rank = -1;
                     for (let i = 0; i < data.length; i++) { if (data[i].player_id === playerId) { rank = i + 1; break; } }
+                    
                     if (rank > 0) {
                         let reward = 0;
-                        if (rank === 1) reward = 5; else if (rank === 2) reward = 4; else if (rank === 3) reward = 3; else if (rank === 4) reward = 2; else if (rank === 5) reward = 1;
-                        if (reward > 0) { eventBoost += reward; document.getElementById('rewardText').textContent = "x" + reward; document.getElementById('rewardModal').style.display = 'flex'; }
+                        if (rank === 1) reward = 5; 
+                        else if (rank === 2) reward = 4; 
+                        else if (rank === 3) reward = 3; 
+                        else if (rank === 4) reward = 2; 
+                        else if (rank === 5) reward = 1;
+                        
+                        if (reward > 0) { 
+                            eventBoost += reward; 
+                            document.getElementById('rewardText').textContent = "x" + reward; 
+                            document.getElementById('rewardModal').style.display = 'flex'; 
+                        }
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Reward Check Error:", e);
+            }
+
+            // Step 2: RESET for the new week (Monday 00:00 UTC)
+            savedEventWeekId = currentWeek;
+            joinedEvent = false; // Player must join again
+            eventSpores = 0;
+            
             saveGame(true);
         }
         updateUI();
@@ -442,7 +475,7 @@
             if (sps > 0) addXP(sps * dt * 0.1); autoSaveCounter += dt; if (autoSaveCounter >= 30) { saveGame(false); autoSaveCounter = 0; }
             updateUI();
         }, 100);
-        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000);
+        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000); setInterval(checkEventRewards, 60000);
         updateClock(); loadLeaderboard(); fetchOnlineCount(); loadEventLeaderboard();
     };
 
@@ -450,7 +483,8 @@
         const getEl = (id) => document.getElementById(id);
         getEl('spores').textContent = format(spores); getEl('rate').textContent = format(getSPS()); getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
         getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes)); getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
-        getEl('eventMultUI').textContent = "x" + (eventBoost || 0); getEl('lvlUI').textContent = playerLvl;
+        
+        getEl('lvlUI').textContent = playerLvl;
         let nX = getNextXP(), p = Math.min(100, Math.floor((playerXP / nX) * 100)); getEl('xpPct').textContent = p; getEl('xpFill').style.width = p + "%";
         const fS = getEl('frenzyStatus'), fF = getEl('frenzyFill');
         if (isFrenzyActive) { fS.textContent = "FRENZY (" + Math.ceil(frenzyTimer) + "s)"; fF.style.width = (frenzyTimer / 15 * 100) + "%"; }
@@ -507,7 +541,10 @@
         } catch(e) {} 
     };
     window.loadEventLeaderboard = async function() {
-        if (!joinedEvent) return;
+        if (!joinedEvent) {
+             document.getElementById('eventLeaderboardList').innerHTML = "Join event to see ranks.";
+             return;
+        }
         try {
             const currentWeek = getCurrentWeekId();
             const { data, error } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', currentWeek).order('spores', { ascending: false }).limit(5);
@@ -516,11 +553,18 @@
     };
     window.fetchOnlineCount = async function() { try { const t = new Date(Date.now() - 60000).toISOString(); const { count, error } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); if (!error && count !== null) document.getElementById('onlineNum').textContent = count; } catch(e) {} };
     window.restorePurchases = async function() { 
+        if(!playerId) return alert("Error: No Player ID found.");
         try { 
             let { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single(); 
-            if (data) { premiumBoostAdd = data.total_boost; alert("Purchases restored!"); saveGame(true); updateUI(); } 
-            else { alert("No purchases found for this device ID."); }
-        } catch(e) {} 
+            if (data) { 
+                premiumBoostAdd = data.total_boost; 
+                alert("Purchases restored! Boost is now: x" + premiumBoostAdd); 
+                saveGame(true); 
+                updateUI(); 
+            } else { 
+                alert("No purchases found for this Device ID. If you reset your device data, the ID is lost."); 
+            }
+        } catch(e) { alert("Connection Error: " + e.message); } 
     };
     window.hardReset = function() { if(confirm("FULL RESET? Wipes everything except Device ID.")) { const cId = localStorage.getItem("shroom_player_id"); localStorage.clear(); localStorage.setItem("shroom_player_id", cId); location.reload(); } };
     if(window.paypal) {
@@ -538,4 +582,3 @@
 </script>
 </body>
 </html>
-
