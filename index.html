@@ -218,11 +218,10 @@
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
     let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, playerId = "";
-    let eventBoost = 0; // Accumulated permanent multiplier from events
+    let eventBoost = 0; 
     let frenzyTimer = 0, frenzyCooldown = 0, isFrenzyActive = false, frenzyClicks = 0;
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     
-    // Event Variables
     let joinedEvent = false;
     let eventSpores = 0;
     let savedEventWeekId = 0;
@@ -246,7 +245,6 @@
         return hash.toString();
     }
 
-    // Helper for large numbers
     window.format = function(n) {
         if (n === null || n === undefined || isNaN(n) || n < 0) return "0";
         if (n < 1000) return Math.floor(n).toLocaleString();
@@ -256,14 +254,12 @@
         return n.toExponential(2);
     };
 
-    // Updated: Correctly calculates Week ID resetting Sunday 00:00 UTC
     function getCurrentWeekId() {
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        const offset = 3 * 24 * 60 * 60 * 1000; // Aligns Epoch Thursday to Sunday
+        const offset = 3 * 24 * 60 * 60 * 1000; 
         return Math.floor((Date.now() + offset) / oneWeek);
     }
     
-    // Updated: Fixes the event timer for Sunday 00:00 UTC
     function getEventTimeLeft() {
         const now = new Date();
         const nextSunday = new Date(now);
@@ -377,18 +373,28 @@
             joinedEvent = true;
             savedEventWeekId = getCurrentWeekId();
             updateUI(); saveGame(true);
-            saveGame(false);
         }
     };
 
     async function checkEventRewards() {
         const currentWeek = getCurrentWeekId();
-        if (savedEventWeekId < currentWeek) {
+        
+        // Distribution Logic: Run if we are in a new week but haven't claimed the previous one
+        if (savedEventWeekId > 0 && savedEventWeekId < currentWeek) {
             const oldWeekId = savedEventWeekId;
-            joinedEvent = false;
-            eventSpores = 0;
-            savedEventWeekId = currentWeek; 
+            const claimKey = `claimed_reward_${oldWeekId}`;
+            
+            // Preventive double-claim check
+            if (localStorage.getItem(claimKey)) {
+                savedEventWeekId = currentWeek;
+                joinedEvent = false;
+                eventSpores = 0;
+                saveGame(false);
+                return;
+            }
+
             try {
+                // Fetch the winners for the week that just finished
                 const { data, error } = await supabaseClient
                     .from('weekly_leaderboard')
                     .select('player_id, spores')
@@ -396,7 +402,7 @@
                     .order('spores', { ascending: false })
                     .limit(5);
 
-                if (data && !error) {
+                if (data && !error && data.length > 0) {
                     let rank = -1;
                     for (let i = 0; i < data.length; i++) {
                         if (data[i].player_id === playerId) {
@@ -406,22 +412,25 @@
                     }
 
                     if (rank > 0) {
-                        let reward = 0;
-                        if (rank === 1) reward = 5;
-                        else if (rank === 2) reward = 4;
-                        else if (rank === 3) reward = 3;
-                        else if (rank === 4) reward = 2;
-                        else if (rank === 5) reward = 1;
+                        const rewards = { 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 };
+                        let rewardValue = rewards[rank] || 0;
 
-                        if (reward > 0) {
-                            eventBoost += reward;
-                            document.getElementById('rewardText').textContent = "x" + reward;
+                        if (rewardValue > 0) {
+                            eventBoost += rewardValue; // Permanent stackable boost
+                            document.getElementById('rewardText').textContent = "x" + rewardValue;
                             document.getElementById('rewardModal').style.display = 'flex';
                         }
                     }
                 }
+                
+                // Mark processed and reset for the new week
+                localStorage.setItem(claimKey, "true");
+                joinedEvent = false;
+                eventSpores = 0;
+                savedEventWeekId = currentWeek; 
+                saveGame(true);
+
             } catch (e) { console.error("Event Check Error", e); }
-            saveGame(true);
         }
         updateUI();
     }
@@ -466,7 +475,7 @@
                     player_id: playerId,
                     username: pName,
                     spores: Math.floor(eventSpores)
-                });
+                }, { onConflict: 'week_id, player_id' });
              } catch(e) {}
         }
 
@@ -664,7 +673,6 @@
     };
     
     window.loadEventLeaderboard = async function() {
-        if (!joinedEvent) return;
         try {
             const currentWeek = getCurrentWeekId();
             const { data, error } = await supabaseClient
@@ -729,3 +737,4 @@
 </script>
 </body>
 </html>
+
