@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
     <title>🍄 ShroomsBloomIdle 🍄</title>
@@ -12,93 +10,94 @@
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; user-select: none; }
         #topBar { padding: 10px; position: sticky; top: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 2px solid var(--neon); }
         #title { font-size: 1.4em; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); margin: 0; }
-        #saveStatus { font-size: 0.7em; color: #00ff00; font-weight: bold; opacity: 0; transition: opacity 0.3s; position: absolute; right: 15px; top: 10px; }
-        .bar-wrapper { width: 90%; margin: 10px auto; }
-        .full-bar { height: 16px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; position: relative; }
-        .xp-fill { background: linear-gradient(90deg, #00bb00, #39ff14); width: 0%; height: 100%; transition: width 0.3s; }
-        .frenzy-fill { background: linear-gradient(90deg, #ff0000, #ff8c00); width: 0%; height: 100%; transition: width 0.1s linear; }
-        #mushroomClicker { font-size: 110px; cursor: pointer; margin: 15px 0; display: inline-block; transition: transform 0.05s; }
-        .shroom-frenzy-active { animation: pulse 0.15s infinite alternate; filter: drop-shadow(0 0 20px #ff0000); }
-        @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
-        .spore-display { font-size: 2.5em; color: var(--gold); font-weight: 800; margin: 10px 0; }
+        #saveStatus { font-size: 0.7em; color: #00ff00; position: absolute; right: 15px; top: 10px; opacity: 0; transition: 0.3s; }
+        
+        .bar-wrapper { width: 90%; margin: 10px auto; text-align: left; }
+        .bar-text { font-size: 0.8em; font-weight: bold; margin-bottom: 4px; display: block; }
+        .full-bar { height: 16px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; }
+        .xp-fill { background: linear-gradient(90deg, #00bb00, #39ff14); width: 0%; height: 100%; transition: width 0.3s; box-shadow: 0 0 10px var(--xp); }
+        
+        #mushroomClicker { font-size: 110px; cursor: pointer; margin: 15px 0; display: inline-block; transition: transform 0.05s; animation: pulse 3s infinite ease-in-out; }
+        #mushroomClicker:active { transform: scale(0.9); }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
+        .spore-display { font-size: 2.8em; color: var(--gold); font-weight: 800; text-shadow: 0 0 15px rgba(255,215,0,0.4); margin: 10px 0; }
         .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); text-align: left; }
+        .event-card { border-color: var(--event); background: rgba(50, 10, 0, 0.4); }
+        
         .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
-        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.8em; }
+        .btn-group { display: flex; flex-direction: column; position: relative; }
+        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.85em; box-shadow: 0 4px 10px rgba(0,255,255,0.2); }
         .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; margin-top: -8px; font-weight: bold; cursor: pointer; }
-        #chatContainer { height: 120px; overflow-y: auto; font-size: 0.85em; background: rgba(0,0,0,0.4); padding: 5px; border-radius: 5px; }
-        .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; font-size: 0.85em; padding: 5px 0; border-bottom: 1px solid #333; }
-        .float-text { position: fixed; pointer-events: none; color: var(--gold); font-weight: 900; animation: floatUp 0.8s forwards; z-index: 1000; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
-        #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
-        .restore-btn { background: #333; color: var(--gold); border: 1px solid var(--gold); padding: 8px; border-radius: 8px; width: 100%; cursor: pointer; margin-top: 10px; }
+        
+        #chatContainer { height: 120px; overflow-y: auto; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 10px; font-size: 0.85em; border: 1px solid #333; }
+        .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85em; }
+        .float-text { position: fixed; pointer-events: none; color: var(--gold); font-weight: 900; animation: floatUp 0.8s forwards; z-index: 1000; font-size: 1.5em; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
+        
+        .restore-btn { background: transparent; color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body onload="initGame()">
 
-<div id="offlineModal">
-    <div style="background:var(--bg); padding:30px; border:2px solid var(--neon); border-radius:20px;">
-        <h2 style="color:var(--gold)">Welcome Back!</h2>
-        <h3 id="offlineGain" style="color:var(--xp)">+0</h3>
-        <button onclick="document.getElementById('offlineModal').style.display='none'" style="padding:10px 20px; background:var(--neon); color:white; border:none; border-radius:10px;">Collect</button>
-    </div>
-</div>
-
 <div id="usernameOverlay" style="position: fixed; inset: 0; background: #000; z-index: 5000; display: none; align-items: center; justify-content: center; flex-direction: column;">
-    <h1 style="color:var(--neon)">Enter Your Name</h1>
-    <input type="text" id="playerNameInput" maxlength="15" style="padding:10px; border-radius:5px; margin-bottom:10px;">
-    <button onclick="confirmUsername()" style="padding:10px 20px; background:var(--neon); color:white; border:none; border-radius:10px;">Start</button>
+    <h1 style="color:var(--neon); text-shadow: 0 0 15px var(--neon);">🍄 ShroomsBloomIdle</h1>
+    <input type="text" id="playerNameInput" maxlength="15" placeholder="Your Name..." style="padding:15px; border-radius:10px; border:2px solid var(--neon); background:#111; color:#fff; text-align:center;">
+    <button onclick="confirmUsername()" style="margin-top:15px; padding:15px 40px; background:var(--neon); color:white; border:none; border-radius:10px; font-weight:bold;">ENTER JOURNEY</button>
 </div>
 
 <div id="topBar">
     <div id="saveStatus">SAVED</div>
     <div id="title">🍄 SHROOMS BLOOM 🍄</div>
-    <div style="font-size:0.8em; color:var(--cyan)"><span id="nameText">Connecting...</span></div>
-    <div id="liveClock" style="font-size:0.7em; opacity:0.6"></div>
+    <div id="displayUsername" style="color:var(--cyan); font-size:0.85em; font-weight:bold;"><span id="nameText">Connecting...</span></div>
 </div>
 
 <main>
     <div class="bar-wrapper">
+        <span class="bar-text" style="color:var(--xp)">Level <span id="lvlUI">1</span></span>
         <div class="full-bar"><div id="xpFill" class="xp-fill"></div></div>
-        <div style="font-size:0.7em; color:var(--xp)">Level <span id="lvlUI">1</span></div>
     </div>
-    
-    <div id="mushroomClicker" onclick="clickMushroom(event)">🍄</div>
-    <div class="spore-display"><span id="spores">0</span></div>
-    <div style="font-size:0.9em; color:var(--cyan)">SPS: <span id="rate">0</span></div>
 
-    <div class="card" style="border-color:var(--event)">
-        <h3 style="color:var(--event); margin:0;">🔥 Weekly Event</h3>
-        <div style="font-size:0.8em">Time Left: <span id="eventTimer">--</span></div>
-        <div style="font-size:0.8em">Your Score: <span id="eventScoreUI">0</span></div>
-        <button id="joinEventBtn" onclick="joinEvent()" style="width:100%; background:var(--event); color:white; border:none; padding:8px; border-radius:5px; margin-top:5px; cursor:pointer;">JOIN EVENT</button>
-        <div id="eventLeaderboardList" style="margin-top:10px;"></div>
+    <div id="mushroomClicker">🍄</div>
+    <div class="spore-display" id="spores">0</div>
+    <div style="font-size: 1em; color:var(--cyan); font-weight:bold; margin-bottom:15px;">SPS: <span id="rate">0</span></div>
+
+    <div class="card event-card">
+        <h3 style="color:var(--event); margin-top:0;">🔥 Weekly Event</h3>
+        <div style="display:flex; justify-content:space-between; font-size:0.9em; margin-bottom:5px;">
+            <span>Time Left: <b id="eventTimer" style="color:#fff">--</b></span>
+            <span>Score: <b id="eventScoreUI" style="color:var(--gold)">0</b></span>
+        </div>
+        <button id="joinEventBtn" onclick="joinEvent()" style="width:100%; background:linear-gradient(45deg, #ff4500, #ff8c00); color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">JOIN EVENT</button>
+        <div id="eventLeaderboardList" style="margin-top:10px; border-top: 1px solid rgba(255,69,0,0.3); padding-top:10px;"></div>
     </div>
 
     <div class="card">
-        <div style="display:flex; justify-content:space-between;">
-            <span>Total Multiplier:</span> <b id="totalMultUI" style="color:var(--cyan)">x1.00</b>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Total Multiplier:</span>
+            <b id="totalMultUI" style="color:var(--cyan); font-size:1.2em;">x1.00</b>
         </div>
     </div>
 
     <div id="upgradeContainer" class="upgrade-grid"></div>
 
     <div class="upgrade-grid">
-        <div style="display:flex; flex-direction:column;">
+        <div class="btn-group">
             <button id="buyMushroomBtn" class="upgrade-main" onclick="buyMushroom(false)">Buy Shroom</button>
-            <button class="max-btn" onclick="buyMushroom(true)">MAX</button>
+            <button class="max-btn" onclick="buyMushroom(true)">BUY MAX</button>
         </div>
-        <div style="display:flex; flex-direction:column;">
+        <div class="btn-group">
             <button id="ascendBtn" class="upgrade-main" onclick="ascend(false)">Ascend</button>
-            <button class="max-btn" onclick="ascend(true)">MAX</button>
+            <button class="max-btn" onclick="ascend(true)">BUY MAX</button>
         </div>
     </div>
 
     <div class="card">
         <h3>💬 Global Chat</h3>
         <div id="chatContainer"></div>
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <input type="text" id="chatInput" style="flex:1; background:#000; color:#fff; border:1px solid var(--neon);">
-            <button onclick="sendChatMessage()" style="background:var(--neon); border:none; color:white; padding:5px 10px;">Send</button>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <input type="text" id="chatInput" placeholder="Say something..." style="flex:1; padding:10px; border-radius:8px; background:#000; border:1px solid var(--neon); color:#fff;">
+            <button onclick="sendChatMessage()" style="padding:0 15px; background:var(--neon); border:none; color:white; border-radius:8px; font-weight:bold;">Send</button>
         </div>
     </div>
 
@@ -109,7 +108,7 @@
     </div>
 
     <div class="card">
-        <h3>🏆 World Rankings</h3>
+        <h3 style="color:var(--gold); text-align:center;">🏆 World Rankings</h3>
         <div id="leaderboardList"></div>
     </div>
 </main>
@@ -130,74 +129,111 @@
         u1: { name: "Spore Collector", base: 15, rate: 1, qty: 0, growth: 1.15 },
         u2: { name: "Fungal Patch", base: 150, rate: 10, qty: 0, growth: 1.15 },
         u3: { name: "Ancient Grove", base: 2000, rate: 85, qty: 0, growth: 1.15 },
-        u4: { name: "Spirit Tapper", base: 18000, rate: 450, qty: 0, growth: 1.15 }
+        u4: { name: "Spirit Tapper", base: 18000, rate: 450, qty: 0, growth: 1.15 },
+        u5: { name: "Void Mycelium", base: 150000, rate: 2200, qty: 0, growth: 1.15 }
     };
 
-    function generateHash(d) { return (d.spores + d.mushrooms + d.playerLvl + "SHROOM_SALT_99").length; } // Consistent salt
+    function format(n) {
+        if (n < 1000) return Math.floor(n).toLocaleString();
+        const abbrevs = ["k", "M", "B", "T", "Qa", "Qi"];
+        let tier = Math.floor(Math.log10(n) / 3);
+        if (tier < abbrevs.length + 1) return (n / Math.pow(10, tier * 3)).toFixed(2) + abbrevs[tier - 1];
+        return n.toExponential(2);
+    }
+
     function getCurrentWeekId() { return Math.floor(Date.now() / 604800000); }
+    function getNextXP() { return 100 * Math.pow(1.5, playerLvl - 1); }
     function getTotalMult() { return (1 + (premiumBoostAdd || 0) + (ascensionTimes * 1.0)); }
     function getSPS() { let s = 0; for (let k in upgrades) s += (upgrades[k].qty * upgrades[k].rate); return s * getTotalMult(); }
-    function format(n) { return n < 1000 ? Math.floor(n) : n.toExponential(2); }
 
-    window.clickMushroom = function(e) {
+    document.getElementById('mushroomClicker').addEventListener('click', (e) => {
         let gain = 1 * getTotalMult(); spores += gain; if(joinedEvent) eventSpores += gain;
+        playerXP += 1; if(playerXP >= getNextXP()) { playerXP = 0; playerLvl++; }
+        
         const f = document.createElement("div"); f.className = "float-text"; f.textContent = "+" + format(gain);
         f.style.left = e.clientX + "px"; f.style.top = e.clientY + "px";
         document.body.appendChild(f); setTimeout(() => f.remove(), 800);
         updateUI();
-    };
-
-    window.saveGame = async function(show) {
-        if (!pName) return;
-        const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, playerId, eventSpores, joinedEvent, savedEventWeekId, 
-            u: Object.keys(upgrades).map(k => upgrades[k].qty), last: Date.now() };
-        localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
-        if(show) { document.getElementById('saveStatus').style.opacity = 1; setTimeout(()=>document.getElementById('saveStatus').style.opacity = 0, 1000); }
-        
-        // Live Database Sync
-        await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date() });
-        if(joinedEvent) {
-            await supabaseClient.from('weekly_leaderboard').upsert({ week_id: getCurrentWeekId(), player_id: playerId, username: pName, spores: Math.floor(eventSpores) });
-        }
-    };
+    });
 
     window.initGame = function() {
-        playerId = localStorage.getItem("shroom_player_id") || 'id-' + Math.random().toString(36).substr(2, 9);
+        playerId = localStorage.getItem("shroom_player_id") || 'id-' + Math.random().toString(36).substr(2, 12);
         localStorage.setItem("shroom_player_id", playerId);
         
         const saved = localStorage.getItem("shroom_save_v4_sec");
         if(saved) {
-            const s = JSON.parse(atob(saved));
-            spores = s.spores; mushrooms = s.mushrooms; ascensionTimes = s.ascensionTimes; pName = s.pName;
-            premiumBoostAdd = s.premiumBoostAdd; playerLvl = s.playerLvl; playerXP = s.playerXP;
-            joinedEvent = s.joinedEvent; eventSpores = s.eventSpores; savedEventWeekId = s.savedEventWeekId;
-            s.u.forEach((q, i) => upgrades['u'+(i+1)].qty = q);
+            try {
+                const s = JSON.parse(atob(saved));
+                spores = s.spores || 0; mushrooms = s.mushrooms || 0; ascensionTimes = s.ascensionTimes || 0; 
+                pName = s.pName || ""; premiumBoostAdd = s.premiumBoostAdd || 0;
+                playerLvl = s.playerLvl || 1; playerXP = s.playerXP || 0;
+                joinedEvent = s.joinedEvent || false; eventSpores = s.eventSpores || 0;
+                if(s.u) s.u.forEach((q, i) => { if(upgrades['u'+(i+1)]) upgrades['u'+(i+1)].qty = q; });
+            } catch(e) {}
         }
 
         const container = document.getElementById('upgradeContainer');
         for(let k in upgrades) {
-            container.innerHTML += `<div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}')"></button><button class="max-btn" onclick="buyUpgrade('${k}',true)">MAX</button></div>`;
+            container.innerHTML += `<div class="btn-group"><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}')"></button><button class="max-btn" onclick="buyUpgrade('${k}',true)">BUY MAX</button></div>`;
         }
 
         if(!pName) document.getElementById('usernameOverlay').style.display = 'flex';
-        else document.getElementById('nameText').textContent = pName;
+        else document.getElementById('nameText').textContent = "Shroomer: " + pName;
 
         setInterval(() => {
             let dt = (Date.now() - lastUpdate) / 1000; lastUpdate = Date.now();
             let gain = getSPS() * dt; spores += gain; if(joinedEvent) eventSpores += gain;
+            if(gain > 0) { playerXP += gain * 0.1; if(playerXP >= getNextXP()) { playerXP = 0; playerLvl++; } }
             updateUI();
         }, 100);
 
-        setInterval(() => saveGame(false), 30000);
-        setInterval(loadLeaderboards, 10000);
+        setInterval(() => saveGame(false), 20000);
+        setInterval(loadLeaderboards, 15000);
+        setInterval(fetchChat, 5000);
         loadLeaderboards();
+        fetchChat();
+    };
+
+    window.saveGame = async function(indicator) {
+        if(!pName) return;
+        const d = { spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, playerId, joinedEvent, eventSpores, u: Object.keys(upgrades).map(k => upgrades[k].qty) };
+        localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
+        if(indicator) { document.getElementById('saveStatus').style.opacity = 1; setTimeout(()=>document.getElementById('saveStatus').style.opacity=0, 1500); }
+        
+        await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date() });
+        if(joinedEvent) { await supabaseClient.from('weekly_leaderboard').upsert({ week_id: getCurrentWeekId(), player_id: playerId, username: pName, spores: Math.floor(eventSpores) }); }
+    };
+
+    window.updateUI = function() {
+        document.getElementById('spores').textContent = format(spores);
+        document.getElementById('rate').textContent = format(getSPS());
+        document.getElementById('lvlUI').textContent = playerLvl;
+        document.getElementById('xpFill').style.width = (playerXP / getNextXP() * 100) + "%";
+        document.getElementById('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
+        document.getElementById('eventScoreUI').textContent = format(eventSpores);
+        
+        for(let k in upgrades) {
+            let u = upgrades[k]; let cost = u.base * Math.pow(u.growth, u.qty);
+            document.getElementById('btn-'+k).innerHTML = `${u.name} (${u.qty})<br>${format(cost)}`;
+            document.getElementById('btn-'+k).disabled = spores < cost;
+        }
+        
+        let mCost = 3000 * Math.pow(1.2, mushrooms);
+        document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br>${format(mCost)}`;
+        document.getElementById('buyMushroomBtn').disabled = spores < mCost;
+
+        let aCost = 50 * Math.pow(1.1, ascensionTimes);
+        document.getElementById('ascendBtn').innerHTML = `Ascend (${ascensionTimes})<br>${format(aCost)} Shrooms`;
+        document.getElementById('ascendBtn').disabled = mushrooms < aCost;
+        
+        document.getElementById('joinEventBtn').style.display = joinedEvent ? 'none' : 'block';
     };
 
     window.buyUpgrade = function(id, max) {
         let u = upgrades[id];
-        const getCost = (q) => u.base * Math.pow(u.growth, q);
-        if(max) { while(spores >= getCost(u.qty)) { spores -= getCost(u.qty); u.qty++; } }
-        else if(spores >= getCost(u.qty)) { spores -= getCost(u.qty); u.qty++; }
+        const cost = () => u.base * Math.pow(u.growth, u.qty);
+        if(max) { while(spores >= cost()) { spores -= cost(); u.qty++; } }
+        else if(spores >= cost()) { spores -= cost(); u.qty++; }
         updateUI();
     };
 
@@ -208,56 +244,40 @@
         updateUI();
     };
 
-    window.ascend = function(max) {
-        const cost = () => 50 * Math.pow(1.1, ascensionTimes);
-        if(mushrooms >= cost()) { mushrooms = 0; spores = 0; ascensionTimes++; for(let k in upgrades) upgrades[k].qty = 0; }
-        updateUI();
+    window.ascend = function() {
+        const cost = 50 * Math.pow(1.1, ascensionTimes);
+        if(mushrooms >= cost) { mushrooms = 0; spores = 0; playerLvl = 1; playerXP = 0; ascensionTimes++; for(let k in upgrades) upgrades[k].qty = 0; saveGame(true); }
     };
-
-    function updateUI() {
-        document.getElementById('spores').textContent = format(spores);
-        document.getElementById('rate').textContent = format(getSPS());
-        document.getElementById('lvlUI').textContent = playerLvl;
-        document.getElementById('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
-        document.getElementById('eventScoreUI').textContent = format(eventSpores);
-        for(let k in upgrades) {
-            let u = upgrades[k];
-            document.getElementById('btn-'+k).innerHTML = `${u.name}<br>${format(u.base * Math.pow(u.growth, u.qty))}`;
-        }
-        document.getElementById('buyMushroomBtn').innerHTML = `Buy Shroom (${mushrooms})<br>${format(3000 * Math.pow(1.2, mushrooms))}`;
-        document.getElementById('joinEventBtn').style.display = joinedEvent ? 'none' : 'block';
-    }
-
-    async function loadLeaderboards() {
-        const { data: lb } = await supabaseClient.from('leaderboard').select('*').order('ascensions', {ascending:false}).limit(5);
-        if(lb) document.getElementById('leaderboardList').innerHTML = lb.map(p => `<div class="lb-row"><span></span><span>${p.username}</span><span>L${p.level}</span><span>A${p.ascensions}</span></div>`).join('');
-        
-        const { data: ev } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', getCurrentWeekId()).order('spores', {ascending:false}).limit(5);
-        if(ev) document.getElementById('eventLeaderboardList').innerHTML = ev.map((p,i) => `<div style="font-size:0.8em">#${i+1} ${p.username}: ${format(p.spores)}</div>`).join('');
-    }
 
     window.confirmUsername = function() {
-        pName = document.getElementById('playerNameInput').value;
-        if(pName) { document.getElementById('usernameOverlay').style.display='none'; document.getElementById('nameText').textContent=pName; saveGame(true); }
+        let n = document.getElementById('playerNameInput').value.trim();
+        if(n) { pName = n; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('nameText').textContent = "Shroomer: " + pName; saveGame(true); }
     };
 
-    window.joinEvent = function() { joinedEvent = true; savedEventWeekId = getCurrentWeekId(); saveGame(true); };
+    window.joinEvent = function() { joinedEvent = true; saveGame(true); updateUI(); };
 
-    window.restorePurchases = async function() {
-        const { data } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single();
-        if(data) { premiumBoostAdd = data.total_boost; alert("Restored! Your Multiplier is now x" + getTotalMult()); updateUI(); saveGame(true); }
-    };
+    async function loadLeaderboards() {
+        const { data: lb } = await supabaseClient.from('leaderboard').select('*').order('ascensions', {ascending:false}).limit(8);
+        if(lb) document.getElementById('leaderboardList').innerHTML = lb.map((p,i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">L${p.level}</span><span style="color:var(--neon)">A${p.ascensions}</span></div>`).join('');
+        
+        const { data: ev } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', getCurrentWeekId()).order('spores', {ascending:false}).limit(5);
+        if(ev) document.getElementById('eventLeaderboardList').innerHTML = ev.map((p,i) => `<div style="font-size:0.85em; display:flex; justify-content:space-between;"><span>#${i+1} ${p.username}</span><span style="color:var(--gold)">${format(p.spores)}</span></div>`).join('');
+    }
 
     window.sendChatMessage = async function() {
-        const m = document.getElementById('chatInput').value;
-        if(m) { await supabaseClient.from('chat').insert({ username: pName, message: m }); document.getElementById('chatInput').value=''; fetchChat(); }
+        let m = document.getElementById('chatInput').value.trim();
+        if(m && pName) { await supabaseClient.from('chat').insert({ username: pName, message: m }); document.getElementById('chatInput').value = ""; fetchChat(); }
     };
 
     async function fetchChat() {
-        const { data } = await supabaseClient.from('chat').select('*').order('created_at', {ascending:false}).limit(10);
-        if(data) document.getElementById('chatContainer').innerHTML = data.reverse().map(c => `<div><b>${c.username}:</b> ${c.message}</div>`).join('');
+        const { data } = await supabaseClient.from('chat').select('*').order('created_at', {ascending:false}).limit(15);
+        if(data) document.getElementById('chatContainer').innerHTML = data.reverse().map(c => `<div><b style="color:var(--cyan)">${c.username}:</b> ${c.message}</div>`).join('');
     }
-    setInterval(fetchChat, 5000);
+
+    window.restorePurchases = async function() {
+        const { data } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single();
+        if(data) { premiumBoostAdd = data.total_boost; alert("Data Restored! Total Multiplier Updated."); updateUI(); saveGame(true); }
+    };
 
     paypal.Buttons({
         createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { value: '1.69' } }] }),
