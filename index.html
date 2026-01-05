@@ -324,11 +324,30 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // Fix for online updating: update last_seen timestamp regularly
+    // FIXED: Reliable Heartbeat system that pings Supabase every 30 seconds
     async function updateOnlineStatus() {
         if (!pName || !playerId) return;
-        try { await supabaseClient.from('leaderboard').update({ last_seen: new Date().toISOString() }).eq('player_id', playerId); } catch(e) {}
+        try { 
+            await supabaseClient.from('leaderboard')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('player_id', playerId); 
+        } catch(e) {}
     }
+
+    // FIXED: Optimized query to count players seen in the last 2 minutes
+    window.fetchOnlineCount = async function() { 
+        try { 
+            const twoMinutesAgo = new Date(Date.now() - 120000).toISOString(); 
+            const { count, error } = await supabaseClient
+                .from('leaderboard')
+                .select('player_id', { count: 'exact', head: true })
+                .gt('last_seen', twoMinutesAgo); 
+            
+            if (!error) {
+                document.getElementById('onlineNum').textContent = count || 1; 
+            }
+        } catch(e) {} 
+    };
 
     window.initGame = async function() {
         playerId = localStorage.getItem("shroom_player_id") || ('id-' + Math.random().toString(36).substr(2, 16));
@@ -376,8 +395,18 @@
             if (sps > 0) addXP(sps * dt * 0.1); autoSaveCounter += dt; if (autoSaveCounter >= 30) { saveGame(false); autoSaveCounter = 0; }
             updateUI(); updateClock();
         }, 100);
-        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000); setInterval(updateOnlineStatus, 10000);
-        loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
+
+        // Core syncing intervals
+        setInterval(fetchChat, 5000); 
+        setInterval(loadLeaderboard, 15000); 
+        setInterval(loadEventLeaderboard, 15000); 
+        setInterval(fetchOnlineCount, 20000); // Check online status count
+        setInterval(updateOnlineStatus, 30000); // Heartbeat ping
+        
+        loadLeaderboard(); 
+        loadEventLeaderboard(); 
+        fetchOnlineCount();
+        updateOnlineStatus();
     };
 
     function updateUI() {
@@ -409,12 +438,17 @@
     window.closeRewardModal = function() { document.getElementById('rewardModal').style.display = 'none'; };
     window.confirmUsername = async function() { 
         let i = document.getElementById('playerNameInput').value.trim(); 
-        if (i.length >= 2 && i.length <= 15) { pName = i; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('nameText').textContent = "Shroomer: " + pName; saveGame(true); } 
+        if (i.length >= 2 && i.length <= 15) { 
+            pName = i; 
+            document.getElementById('usernameOverlay').style.display = 'none'; 
+            document.getElementById('nameText').textContent = "Shroomer: " + pName; 
+            saveGame(true); 
+            updateOnlineStatus(); // Immediate ping on name confirmation
+        } 
     };
     window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; };
     window.updateClock = function() { document.getElementById('liveClock').textContent = new Date().toLocaleString(); };
     
-    // Updated unread system
     window.clearUnread = function() { 
         unreadCount = 0; 
         document.getElementById('mailNotif').style.display = 'none'; 
@@ -430,7 +464,6 @@
             if (data && data.length > 0) { 
                 const newestId = data[0].id;
                 if (lastChatId && newestId !== lastChatId && newestId > lastSeenChatId) {
-                    // Logic to count how many messages are newer than the one last seen
                     let newMsgs = data.filter(m => m.id > lastSeenChatId).length;
                     if (newMsgs > 0) {
                         unreadCount = newMsgs;
@@ -451,7 +484,7 @@
             await supabaseClient.from('chat').insert({ username: pName, message: msg }); 
             input.value = ""; 
             fetchChat(); 
-            clearUnread(); // Assume if you sent a message, you've read the chat
+            clearUnread();
         } 
     };
 
@@ -467,14 +500,6 @@
             const { data } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', getCurrentWeekId()).order('spores', { ascending: false }).limit(5);
             if (data) { document.getElementById('eventLeaderboardList').innerHTML = data.length ? data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--gold)">${format(p.spores)}</span></div>`).join('') : "No participants yet."; }
         } catch(e) {}
-    };
-
-    window.fetchOnlineCount = async function() { 
-        try { 
-            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
-            const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); 
-            document.getElementById('onlineNum').textContent = count || 1; 
-        } catch(e) {} 
     };
     
     window.restorePurchases = async function() { 
