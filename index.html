@@ -176,7 +176,7 @@
     <div class="card">
         <h3>⚡ Premium Boosts</h3>
         <div id="paypal-button-container"></div>
-        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£1.69)</p>
+        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£0.99)</p>
         <button class="restore-btn" onclick="restorePurchases()">Restore Multipliers</button>
     </div>
 
@@ -525,7 +525,7 @@
     };
 
     if(window.paypal) {
-        paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); } }) }).render('#paypal-button-container');
+        paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "0.99" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); } }) }).render('#paypal-button-container');
     }
 })();
 </script>
