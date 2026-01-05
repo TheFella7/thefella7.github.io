@@ -252,7 +252,6 @@
     };
 
     function getCurrentWeekId() {
-        // Epoch (0) was Thursday. To align with Monday 00:00 UTC, we offset by 4 days (345600000ms)
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
         return Math.floor((Date.now() + 345600000) / oneWeek);
     }
@@ -260,7 +259,6 @@
     function getEventTimeLeft() {
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
         const currentWeek = getCurrentWeekId();
-        // Calculate the start of the next week based on Monday alignment
         const nextWeekStart = (currentWeek + 1) * oneWeek - 345600000;
         const diff = nextWeekStart - Date.now();
         if (diff < 0) return "0h 0m";
@@ -355,7 +353,6 @@
         if (!pName) { openNameChange(); return; }
         const currentWeek = getCurrentWeekId();
         if (savedEventWeekId !== currentWeek) {
-            // New event started, reset progress
             savedEventWeekId = currentWeek;
             eventSpores = 0;
             joinedEvent = true;
@@ -368,12 +365,8 @@
 
     async function checkEventRewards() {
         const currentWeek = getCurrentWeekId();
-        
-        // If the saved week is less than the current week, the event has ended.
         if (savedEventWeekId < currentWeek) {
             const oldWeekId = savedEventWeekId;
-            
-            // Step 1: Check rewards for the OLD week
             try {
                 const { data, error } = await supabaseClient
                     .from('weekly_leaderboard')
@@ -385,15 +378,8 @@
                 if (data && !error) {
                     let rank = -1;
                     for (let i = 0; i < data.length; i++) { if (data[i].player_id === playerId) { rank = i + 1; break; } }
-                    
                     if (rank > 0) {
-                        let reward = 0;
-                        if (rank === 1) reward = 5; 
-                        else if (rank === 2) reward = 4; 
-                        else if (rank === 3) reward = 3; 
-                        else if (rank === 4) reward = 2; 
-                        else if (rank === 5) reward = 1;
-                        
+                        let reward = 6 - rank;
                         if (reward > 0) { 
                             eventBoost += reward; 
                             document.getElementById('rewardText').textContent = "x" + reward; 
@@ -401,15 +387,10 @@
                         }
                     }
                 }
-            } catch (e) {
-                console.error("Reward Check Error:", e);
-            }
-
-            // Step 2: RESET for the new week (Monday 00:00 UTC)
+            } catch (e) { console.error("Reward Check Error:", e); }
             savedEventWeekId = currentWeek;
-            joinedEvent = false; // Player must join again
+            joinedEvent = false;
             eventSpores = 0;
-            
             saveGame(true);
         }
         updateUI();
@@ -433,7 +414,7 @@
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         try { await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString() }, { onConflict: 'player_id' }); } catch(e) {}
-        if (joinedEvent) { try { await supabaseClient.from('weekly_leaderboard').upsert({ week_id: savedEventWeekId, player_id: playerId, username: pName, spores: Math.floor(eventSpores) }); } catch(e) {} }
+        if (joinedEvent) { try { await supabaseClient.from('weekly_leaderboard').upsert({ week_id: savedEventWeekId, player_id: playerId, username: pName, spores: Math.floor(eventSpores) }, { onConflict: 'week_id,player_id' }); } catch(e) {} }
         if(indicator && document.getElementById('saveStatus')) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { if(document.getElementById('saveStatus')) document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
@@ -483,7 +464,6 @@
         const getEl = (id) => document.getElementById(id);
         getEl('spores').textContent = format(spores); getEl('rate').textContent = format(getSPS()); getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
         getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes)); getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
-        
         getEl('lvlUI').textContent = playerLvl;
         let nX = getNextXP(), p = Math.min(100, Math.floor((playerXP / nX) * 100)); getEl('xpPct').textContent = p; getEl('xpFill').style.width = p + "%";
         const fS = getEl('frenzyStatus'), fF = getEl('frenzyFill');
@@ -541,10 +521,7 @@
         } catch(e) {} 
     };
     window.loadEventLeaderboard = async function() {
-        if (!joinedEvent) {
-             document.getElementById('eventLeaderboardList').innerHTML = "Join event to see ranks.";
-             return;
-        }
+        if (!joinedEvent) { document.getElementById('eventLeaderboardList').innerHTML = "Join event to see ranks."; return; }
         try {
             const currentWeek = getCurrentWeekId();
             const { data, error } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', currentWeek).order('spores', { ascending: false }).limit(5);
@@ -556,17 +533,10 @@
         if(!playerId) return alert("Error: No Player ID found.");
         try { 
             let { data, error } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single(); 
-            if (data) { 
-                premiumBoostAdd = data.total_boost; 
-                alert("Purchases restored! Boost is now: x" + premiumBoostAdd); 
-                saveGame(true); 
-                updateUI(); 
-            } else { 
-                alert("No purchases found for this Device ID. If you reset your device data, the ID is lost."); 
-            }
+            if (data) { premiumBoostAdd = data.total_boost; alert("Purchases restored! Boost is now: x" + premiumBoostAdd); saveGame(true); updateUI(); } else { alert("No purchases found for this Device ID."); }
         } catch(e) { alert("Connection Error: " + e.message); } 
     };
-    window.hardReset = function() { if(confirm("FULL RESET? Wipes everything except Device ID.")) { const cId = localStorage.getItem("shroom_player_id"); localStorage.clear(); localStorage.setItem("shroom_player_id", cId); location.reload(); } };
+    window.hardReset = function() { if(confirm("FULL RESET?")) { const cId = localStorage.getItem("shroom_player_id"); localStorage.clear(); localStorage.setItem("shroom_player_id", cId); location.reload(); } };
     if(window.paypal) {
         paypal.Buttons({ 
             style: { shape: 'pill', color: 'gold', height: 40 }, 
