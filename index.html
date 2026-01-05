@@ -318,7 +318,7 @@
         localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
-        try { await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString(), event_boost: eventBoost }, { onConflict: 'player_id' }); } catch(e) {}
+        try { await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString(), event_boost: eventBoost, premium_boost: premiumBoostAdd }, { onConflict: 'player_id' }); } catch(e) {}
         if (joinedEvent) { try { await supabaseClient.from('weekly_leaderboard').upsert({ week_id: savedEventWeekId, player_id: playerId, username: pName, spores: Math.floor(eventSpores) }, { onConflict: 'week_id,player_id' }); } catch(e) {} }
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
@@ -342,15 +342,19 @@
             } catch(e) {}
         }
 
-        // AUTO-TRIGGER REWARDS & CLOUD SYNC
         try { 
-            await supabaseClient.rpc('process_weekly_rewards'); // This checks for rewards from last week
-            const { data } = await supabaseClient.from('leaderboard').select('event_boost').eq('player_id', playerId).single();
-            if (data && data.event_boost > eventBoost) { 
-                let diff = data.event_boost - eventBoost;
-                eventBoost = data.event_boost; 
-                document.getElementById('rewardText').textContent = "+" + diff + " Multiplier!"; 
-                document.getElementById('rewardModal').style.display = 'flex';
+            await supabaseClient.rpc('process_weekly_rewards');
+            const { data } = await supabaseClient.from('leaderboard').select('event_boost, premium_boost').eq('player_id', playerId).single();
+            if (data) {
+                if (data.event_boost > eventBoost) { 
+                    let diff = data.event_boost - eventBoost;
+                    eventBoost = data.event_boost; 
+                    document.getElementById('rewardText').textContent = "+" + diff + " Multiplier!"; 
+                    document.getElementById('rewardModal').style.display = 'flex';
+                }
+                if (data.premium_boost > premiumBoostAdd) {
+                    premiumBoostAdd = data.premium_boost;
+                }
             }
         } catch(e) {}
 
@@ -423,9 +427,23 @@
         } catch(e) {}
     };
     window.fetchOnlineCount = async function() { try { const t = new Date(Date.now() - 60000).toISOString(); const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); if (count) document.getElementById('onlineNum').textContent = count; } catch(e) {} };
+    
     window.restorePurchases = async function() { 
-        try { const { data } = await supabaseClient.from('purchases').select('total_boost').eq('player_id', playerId).single(); if (data) { premiumBoostAdd = data.total_boost; updateUI(); alert("Restored!"); } } catch(e) {} 
+        try { 
+            const { data, error } = await supabaseClient.from('leaderboard').select('premium_boost').eq('player_id', playerId).single(); 
+            if (data && data.premium_boost > 0) { 
+                premiumBoostAdd = data.premium_boost; 
+                updateUI(); 
+                saveGame(false);
+                alert("Multipliers restored! Current boost: x" + premiumBoostAdd); 
+            } else {
+                alert("No multipliers found for this account.");
+            }
+        } catch(e) {
+            alert("Error syncing with server.");
+        } 
     };
+
     window.hardReset = function() { if(confirm("FULL RESET?")) { localStorage.clear(); location.reload(); } };
     if(window.paypal) {
         paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); } }) }).render('#paypal-button-container');
@@ -434,4 +452,3 @@
 </script>
 </body>
 </html>
-
