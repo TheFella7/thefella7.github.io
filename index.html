@@ -2,183 +2,242 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🍄 ShroomsBloomIdle 🍄</title>
+    <meta name="description" content="ShroomsBloomIdle - Grow your fungal empire.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8763574694147463" crossorigin="anonymous"></script>
+    <title>🍄 ShroomsBloomIdle 🍄</title>
     <style>
-        :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; }
+        :root { --neon: #ff00ff; --cyan: #00ffff; --gold: #ffd700; --bg: #0a0118; --xp: #39ff14; --event: #ff4500; }
+        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: radial-gradient(circle at top, #1a002f, var(--bg)); color: #fff; text-align: center; overflow-x: hidden; touch-action: manipulation; user-select: none; }
         #topBar { padding: 10px; position: sticky; top: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 100; border-bottom: 2px solid var(--neon); }
         #title { font-size: 1.4em; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); margin: 0; }
-        #saveStatus { font-size: 0.7em; color: #00ff00; position: absolute; right: 15px; top: 10px; opacity: 0; transition: 0.3s; }
+        #displayUsername { color: var(--cyan); font-size: 0.85em; font-weight: bold; }
         .bar-wrapper { width: 90%; margin: 10px auto; }
         .full-bar { height: 16px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; position: relative; }
         .xp-fill { background: linear-gradient(90deg, #00bb00, #39ff14); width: 0%; height: 100%; transition: width 0.3s; }
-        .frenzy-fill { background: linear-gradient(90deg, #ff0000, #ff8c00); width: 0%; height: 100%; transition: width 0.1s linear; }
         #mushroomClicker { font-size: 110px; cursor: pointer; margin: 15px 0; display: inline-block; transition: transform 0.05s; }
         .shroom-frenzy-active { animation: frenzyAnimate 0.15s infinite alternate; filter: drop-shadow(0 0 30px #ff0000); }
-        @keyframes frenzyAnimate { 0% { transform: scale(1.1); } 100% { transform: scale(1.25); } }
-        .spore-display { font-size: 2.5em; color: var(--gold); font-weight: 800; margin: 10px 0; }
-        .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
-        .btn-group { display: flex; flex-direction: column; }
-        button.upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px 12px 0 0; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; }
-        .max-btn { background: var(--gold); border: none; padding: 5px; font-size: 0.7em; border-radius: 0 0 12px 12px; font-weight: bold; cursor: pointer; }
+        @keyframes frenzyAnimate { 0% { transform: scale(1.1) rotate(-3deg); } 100% { transform: scale(1.2) rotate(3deg); } }
         .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin: 15px auto; max-width: 450px; border: 1px solid rgba(255,0,255,0.2); text-align: left; }
-        .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85em; }
-        .float-text { position: fixed; pointer-events: none; color: var(--gold); font-weight: 900; animation: floatUp 0.8s forwards; z-index: 1000; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+        .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px auto; max-width: 450px; padding: 0 10px; }
+        .upgrade-main { background: linear-gradient(45deg, #8a2be2, #00ffff); border: none; border-radius: 12px; padding: 12px 5px; color: #000; font-weight: bold; cursor: pointer; }
+        #chatContainer { height: 120px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; font-size: 0.8em; }
+        .lb-row { display: grid; grid-template-columns: 30px 2fr 1fr 1fr; gap: 5px; padding: 5px; border-bottom: 1px solid #333; font-size: 0.85em; }
+        #offlineModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
     </style>
 </head>
 <body onload="initGame()">
 
+<div id="offlineModal">
+    <h2 style="color:var(--gold)">Welcome Back!</h2>
+    <p>Your spores grew while you slept.</p>
+    <h1 id="offlineGain" style="color:var(--xp)">+0</h1>
+    <button onclick="document.getElementById('offlineModal').style.display='none'" style="padding:10px 30px; background:var(--neon); border:none; color:white; border-radius:10px;">Collect</button>
+</div>
+
 <div id="usernameOverlay" style="position: fixed; inset: 0; background: #000; z-index: 5000; display: none; align-items: center; justify-content: center; flex-direction: column;">
-    <h1 style="color:var(--neon)">🍄 Enter Your Name</h1>
-    <input type="text" id="playerNameInput" style="padding:15px; border-radius:10px;">
-    <button style="margin-top:20px; padding:15px 40px; background:var(--neon); color:#fff; border:none; border-radius:10px;" onclick="confirmUsername()">Start</button>
+    <h1 style="color:var(--neon)">Enter Username</h1>
+    <input type="text" id="playerNameInput" maxlength="15" style="padding:15px; border-radius:10px; text-align:center;">
+    <button onclick="confirmUsername()" style="margin-top:20px; padding:15px 40px; background:var(--neon); color:white; border:none; border-radius:10px;">Start</button>
 </div>
 
 <div id="topBar">
-    <div id="saveStatus">SAVED</div>
     <div id="title">🍄 SHROOMS BLOOM 🍄</div>
-    <div id="displayUsername"><span id="nameText">Connecting...</span></div>
-    <div id="liveClock" style="font-size:0.7em; margin-top:5px;"></div>
+    <div id="displayUsername"><span id="nameText">Loading...</span></div>
 </div>
 
 <main>
     <div class="bar-wrapper">
-        <span style="font-size:0.8em; color:var(--xp)">Level <span id="lvlUI">1</span></span>
+        <span style="color:var(--xp)">Level <span id="lvlUI">1</span></span>
         <div class="full-bar"><div id="xpFill" class="xp-fill"></div></div>
     </div>
-    <div class="bar-wrapper">
-        <span id="frenzyStatus" style="font-size:0.8em; color:#ff8c00">FRENZY CHARGE</span>
-        <div class="full-bar"><div id="frenzyFill" class="frenzy-fill"></div></div>
-    </div>
-    
+
     <div id="mushroomClicker" onclick="clickMushroom(event)">🍄</div>
-    <div class="spore-display" id="spores">0</div>
-    <div style="color:var(--cyan); margin-bottom:10px;">SPS: <span id="rate">0</span></div>
-
-    <div class="upgrade-grid" id="upgradeContainer"></div>
+    <h1 style="color:var(--gold); font-size: 3em; margin: 0;"><span id="spores">0</span></h1>
+    <p style="color:var(--cyan)">SPS: <span id="rate">0</span></p>
 
     <div class="card">
-        <h3>💬 Chat</h3>
-        <div id="chatContainer" style="height:100px; overflow-y:auto; font-size:0.85em; margin-bottom:10px;"></div>
-        <input type="text" id="chatInput" style="width:70%; background:#000; color:#fff; border:1px solid var(--neon);">
-        <button onclick="sendChat()">Send</button>
+        <h3 style="color:var(--event)">Weekly Event Score: <span id="eventScoreUI">0</span></h3>
+        <p style="font-size: 0.8em;">Time Left: <span id="eventTimer">...</span></p>
+        <div id="eventLeaderboardList"></div>
+    </div>
+
+    <div id="upgradeContainer" class="upgrade-grid"></div>
+
+    <div class="card">
+        <h3>Premium Boosts</h3>
+        <div id="paypal-button-container"></div>
     </div>
 
     <div class="card">
-        <h3 style="text-align:center; color:var(--cyan)">WORLD RANKINGS</h3>
+        <h3>Global Chat</h3>
+        <div id="chatContainer"></div>
+        <input type="text" id="chatInput" placeholder="Say something..." style="width:70%; background:#111; color:white; border:1px solid var(--neon); padding:5px;">
+        <button onclick="sendChatMessage()">Send</button>
+    </div>
+
+    <div class="card">
+        <h3>World Rankings</h3>
         <div id="leaderboardList"></div>
     </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-    const SB_URL = "https://qeoaifwzriwerxzlzycp.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlb2FpZnd6cml3ZXJ4emx6eWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODA4ODIsImV4cCI6MjA4MzE1Njg4Mn0.pjzz8ssJsEEOa9_W5Z32aL-S2QBq55B3zQSTOLC4N4c";
-    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=GBP"></script>
 
-    let spores = 0, pName = "", playerId = "", playerLvl = 1, playerXP = 0;
-    let frenzyClicks = 0, frenzyTimer = 0, isFrenzy = false;
+<script>
+    const SB_URL = "YOUR_SUPABASE_URL";
+    const SB_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", playerId = "";
+    let playerLvl = 1, playerXP = 0, premiumBoost = 0, eventBoost = 0;
+    let eventSpores = 0, joinedEvent = true;
+    let lastSave = Date.now(), lastSpores = 0;
 
     const upgrades = {
         u1: { name: "Collector", base: 15, rate: 1, qty: 0, growth: 1.15 },
-        u2: { name: "Patch", base: 150, rate: 10, qty: 0, growth: 1.15 },
-        u3: { name: "Grove", base: 2000, rate: 85, qty: 0, growth: 1.15 }
+        u2: { name: "Patch", base: 150, rate: 10, qty: 0, growth: 1.15 }
     };
 
-    async function initGame() {
-        playerId = localStorage.getItem("shroom_id") || 'id-' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem("shroom_id", playerId);
-        const saved = JSON.parse(localStorage.getItem("shroom_save") || "{}");
-        if(saved.pName) {
-            spores = saved.spores; pName = saved.pName; playerLvl = saved.playerLvl;
-            for(let k in upgrades) upgrades[k].qty = saved.upgrades[k] || 0;
-            document.getElementById('nameText').textContent = pName;
-        } else { document.getElementById('usernameOverlay').style.display = 'flex'; }
-        renderUpgrades(); setInterval(tick, 100); setInterval(syncDB, 15000); loadLeaderboard(); loadChat();
-    }
+    function getCurrentWeek() { return Math.floor((Date.now() + 345600000) / 604800000); }
 
-    function clickMushroom(e) {
-        let gain = (1 + Math.floor(playerLvl * 0.5)) * (isFrenzy ? 5 : 1);
-        spores += gain; playerXP += 2;
-        if(!isFrenzy) {
-            frenzyClicks = Math.min(100, frenzyClicks + 3);
-            if(frenzyClicks >= 100) { isFrenzy = true; frenzyTimer = 15; document.getElementById('mushroomClicker').classList.add('shroom-frenzy-active'); }
-        }
-        const f = document.createElement("div"); f.className = "float-text"; f.textContent = "+" + Math.floor(gain);
-        f.style.left = e.clientX + "px"; f.style.top = e.clientY + "px";
-        document.body.appendChild(f); setTimeout(() => f.remove(), 700);
-    }
+    window.initGame = async function() {
+        playerId = localStorage.getItem("shroom_player_id") || 'p-' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem("shroom_player_id", playerId);
+        
+        loadGame();
+        renderUpgrades();
+        
+        setInterval(tick, 100);
+        setInterval(saveGame, 15000);
+        setInterval(refreshNetworkData, 5000);
+        
+        // Anti-Exploit: Check rewards from server
+        await supabaseClient.rpc('process_weekly_rewards');
+    };
 
     function tick() {
-        let sps = 0; for (let k in upgrades) sps += upgrades[k].qty * upgrades[k].rate;
+        let sps = getSPS();
         spores += sps / 10;
-        if(isFrenzy) { frenzyTimer -= 0.1; if(frenzyTimer <= 0) { isFrenzy = false; document.getElementById('mushroomClicker').classList.remove('shroom-frenzy-active'); frenzyClicks = 0; } }
-        else if(frenzyClicks > 0) frenzyClicks -= 0.1;
-        if(playerXP >= playerLvl * 100) { playerXP = 0; playerLvl++; }
-        updateUI(); document.getElementById('liveClock').textContent = new Date().toLocaleString();
+        eventSpores += sps / 10;
+        updateUI();
+    }
+
+    function getSPS() {
+        let baseSPS = 0;
+        for (let k in upgrades) baseSPS += upgrades[k].qty * upgrades[k].rate;
+        return baseSPS * (1 + premiumBoost + eventBoost + ascensionTimes);
+    }
+
+    async function saveGame() {
+        if(!pName) return;
+
+        // ANTI-EXPLOIT: Verify spore growth rate
+        let timeDiff = (Date.now() - lastSave) / 1000;
+        let maxPossible = (getSPS() * timeDiff * 2) + 500; // Buffer for clicking
+        if ((spores - lastSpores) > maxPossible) {
+            console.warn("Exploit detected. Capping spores.");
+            spores = lastSpores + maxPossible;
+        }
+
+        const payload = { player_id: playerId, username: pName, spores, level: playerLvl, ascensions: ascensionTimes, last_seen: new Date() };
+        await supabaseClient.from('leaderboard').upsert(payload);
+
+        // Save Weekly Event
+        await supabaseClient.from('weekly_leaderboard').upsert({
+            week_id: getCurrentWeek(), player_id: playerId, username: pName, spores: eventSpores
+        });
+
+        localStorage.setItem("shroom_save", JSON.stringify({ spores, playerLvl, eventSpores, pName, upgrades }));
+        lastSave = Date.now();
+        lastSpores = spores;
+    }
+
+    function loadGame() {
+        let data = JSON.parse(localStorage.getItem("shroom_save"));
+        if(data) {
+            spores = data.spores;
+            pName = data.pName;
+            playerLvl = data.playerLvl;
+            eventSpores = data.eventSpores;
+            Object.assign(upgrades, data.upgrades);
+        }
+        if(!pName) document.getElementById('usernameOverlay').style.display = 'flex';
+        else document.getElementById('nameText').textContent = pName;
     }
 
     function updateUI() {
         document.getElementById('spores').textContent = Math.floor(spores).toLocaleString();
+        document.getElementById('rate').textContent = getSPS().toFixed(1);
         document.getElementById('lvlUI').textContent = playerLvl;
-        document.getElementById('xpFill').style.width = (playerXP / (playerLvl * 100) * 100) + "%";
-        document.getElementById('frenzyFill').style.width = (isFrenzy ? (frenzyTimer/15*100) : frenzyClicks) + "%";
-        document.getElementById('rate').textContent = (Object.values(upgrades).reduce((a, b) => a + (b.qty * b.rate), 0)).toLocaleString();
+        document.getElementById('eventScoreUI').textContent = Math.floor(eventSpores).toLocaleString();
+    }
+
+    async function refreshNetworkData() {
+        const { data: lb } = await supabaseClient.from('leaderboard').select('*').order('level', {ascending:false}).limit(5);
+        if(lb) document.getElementById('leaderboardList').innerHTML = lb.map(p => `<div class="lb-row"><span>•</span><span>${p.username}</span><span>Lvl ${p.level}</span></div>`).join('');
+        
+        const { data: chat } = await supabaseClient.from('chat').select('*').order('created_at', {ascending:false}).limit(10);
+        if(chat) document.getElementById('chatContainer').innerHTML = chat.map(c => `<div><b>${c.username}:</b> ${c.message}</div>`).join('');
+    }
+
+    async function sendChatMessage() {
+        let msg = document.getElementById('chatInput').value;
+        if(!msg) return;
+        await supabaseClient.from('chat').insert({ username: pName, message: msg });
+        document.getElementById('chatInput').value = "";
+    }
+
+    window.clickMushroom = function(e) {
+        spores += (1 + (ascensionTimes * 2));
+        eventSpores += 1;
+        updateUI();
     }
 
     function renderUpgrades() {
         const container = document.getElementById('upgradeContainer');
-        container.innerHTML = "";
-        for (let k in upgrades) {
-            const u = upgrades[k];
-            const cost = Math.floor(u.base * Math.pow(u.growth, u.qty));
-            container.innerHTML += `<div class="btn-group">
-                <button class="upgrade-main" onclick="buy('${k}', false)">${u.name} (${u.qty})<br>Cost: ${cost.toLocaleString()}</button>
-                <button class="max-btn" onclick="buy('${k}', true)">BUY MAX</button>
-            </div>`;
+        container.innerHTML = Object.keys(upgrades).map(k => `
+            <button class="upgrade-main" onclick="buyUpgrade('${k}')">
+                ${upgrades[k].name}<br>Cost: ${Math.floor(upgrades[k].base * Math.pow(upgrades[k].growth, upgrades[k].qty))}
+            </button>
+        `).join('');
+    }
+
+    window.buyUpgrade = function(k) {
+        let cost = Math.floor(upgrades[k].base * Math.pow(upgrades[k].growth, upgrades[k].qty));
+        if(spores >= cost) {
+            spores -= cost;
+            upgrades[k].qty++;
+            renderUpgrades();
+            updateUI();
         }
     }
 
-    function buy(id, max) {
-        const u = upgrades[id];
-        let cost = Math.floor(u.base * Math.pow(u.growth, u.qty));
-        if(max) { while(spores >= cost) { spores -= cost; u.qty++; cost = Math.floor(u.base * Math.pow(u.growth, u.qty)); } }
-        else if(spores >= cost) { spores -= cost; u.qty++; }
-        renderUpgrades();
+    window.confirmUsername = function() {
+        pName = document.getElementById('playerNameInput').value;
+        if(pName.length > 2) {
+            document.getElementById('usernameOverlay').style.display = 'none';
+            document.getElementById('nameText').textContent = pName;
+            saveGame();
+        }
     }
 
-    async function syncDB() {
-        if(!pName) return;
-        localStorage.setItem("shroom_save", JSON.stringify({spores, pName, playerLvl, upgrades: {u1: upgrades.u1.qty, u2: upgrades.u2.qty, u3: upgrades.u3.qty}}));
-        await supabase.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), level: playerLvl });
-        document.getElementById('saveStatus').style.opacity = 1; setTimeout(() => document.getElementById('saveStatus').style.opacity = 0, 2000);
-        loadLeaderboard(); loadChat();
-    }
+    // PayPal Integration with Database Logging
+    paypal.Buttons({
+        createOrder: (data, actions) => actions.order.create({ purchase_units: [{ amount: { value: '0.99' } }] }),
+        onApprove: async (data, actions) => {
+            const order = await actions.order.capture();
+            // Securely log purchase to SQL
+            await supabaseClient.from('purchases').insert({
+                player_id: playerId, order_id: order.id, amount: 0.99, status: 'COMPLETED'
+            });
+            premiumBoost += 20;
+            saveGame();
+            alert("Boost Activated! x20 Multiplier added.");
+        }
+    }).render('#paypal-button-container');
 
-    async function loadLeaderboard() {
-        const { data } = await supabase.from('leaderboard').select('*').order('spores', {ascending:false}).limit(5);
-        if(data) document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span>LVL ${p.level}</span><span>${Math.floor(p.spores).toLocaleString()}</span></div>`).join('');
-    }
-
-    async function loadChat() {
-        const { data } = await supabase.from('chat').select('*').order('created_at', {ascending:false}).limit(8);
-        if(data) document.getElementById('chatContainer').innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join('');
-    }
-
-    async function sendChat() {
-        const input = document.getElementById('chatInput');
-        if(!input.value) return;
-        await supabase.from('chat').insert({ username: pName, message: input.value });
-        input.value = ""; loadChat();
-    }
-
-    function confirmUsername() {
-        const val = document.getElementById('playerNameInput').value.trim();
-        if(val.length >= 2) { pName = val; document.getElementById('usernameOverlay').style.display = 'none'; document.getElementById('nameText').textContent = pName; syncDB(); }
-    }
 </script>
 </body>
 </html>
