@@ -303,7 +303,7 @@
         updateUI(); saveGame(true);
     };
 
-    // SAVING LOGIC - Unified update of world rank stats
+    // FIXED SAVE LOGIC: Updates everything including World Rankings immediately
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -321,18 +321,18 @@
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         
         try { 
-            // Update World Rankings (Leaderboard) with current stats
+            // CORE FIX: Explicitly Upserting ALL World Ranking stats here
             await supabaseClient.from('leaderboard').upsert({ 
                 player_id: playerId, 
                 username: pName, 
                 spores: Math.floor(spores), 
-                ascensions: ascensionTimes, 
-                level: playerLvl, 
+                ascensions: Math.floor(ascensionTimes), 
+                level: Math.floor(playerLvl), 
                 last_seen: new Date().toISOString(), 
                 event_boost: eventBoost, 
                 premium_boost: premiumBoostAdd 
             }, { onConflict: 'player_id' }); 
-        } catch(e) {}
+        } catch(e) { console.error("Ranking sync error", e); }
 
         if (joinedEvent) { 
             try { 
@@ -347,8 +347,8 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // INSTANT ONLINE TRACKING HEARTBEAT
-    async function updateOnlineStatus() {
+    // HEARTBEAT FIX: Separate ping to keep 'Online Status' active regardless of activity
+    async function onlineHeartbeat() {
         if (!pName || !playerId) return;
         try { 
             await supabaseClient.from('leaderboard')
@@ -402,12 +402,12 @@
             updateUI(); updateClock();
         }, 100);
         
-        // Polling Intervals
+        // Polling logic fixed for higher reliability
         setInterval(fetchChat, 5000); 
-        setInterval(loadLeaderboard, 15000); 
+        setInterval(loadLeaderboard, 10000); // 10s World Rank updates
         setInterval(loadEventLeaderboard, 15000); 
-        setInterval(fetchOnlineCount, 5000); // Faster check for online players
-        setInterval(updateOnlineStatus, 10000); // Send heartbeat every 10s
+        setInterval(fetchOnlineCount, 5000);  // 5s Online player count sync
+        setInterval(onlineHeartbeat, 10000); // 10s Presence ping
         
         loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
     };
@@ -484,7 +484,7 @@
         if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); clearUnread(); } 
     };
 
-    // WORLD RANKINGS - Sorted by Ascension first, then Level
+    // RANKING FIX: Fetch sorted by Ascension then Level
     window.loadLeaderboard = async function() { 
         try { 
             const { data } = await supabaseClient.from('leaderboard')
@@ -507,14 +507,14 @@
         } catch(e) {}
     };
 
-    // INSTANT PLAYERS ONLINE CALCULATION
+    // ONLINE COUNT FIX: Check presence within 1 minute
     window.fetchOnlineCount = async function() { 
         try { 
-            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
-            const { count } = await supabaseClient.from('leaderboard')
+            const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString(); 
+            const { count, error } = await supabaseClient.from('leaderboard')
                 .select('*', { count: 'exact', head: true })
-                .gt('last_seen', t); 
-            document.getElementById('onlineNum').textContent = count || 1; 
+                .gt('last_seen', sixtySecondsAgo); 
+            if (!error) document.getElementById('onlineNum').textContent = count || 1; 
         } catch(e) {} 
     };
     
