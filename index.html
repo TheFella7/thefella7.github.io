@@ -303,7 +303,6 @@
         updateUI(); saveGame(true);
     };
 
-    // SAVING LOGIC - Unified update of world rank stats
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -321,7 +320,7 @@
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         
         try { 
-            // Update World Rankings (Leaderboard) with current stats
+            // TRACKING UPDATE: Upsert level and ascensions to leaderboard
             await supabaseClient.from('leaderboard').upsert({ 
                 player_id: playerId, 
                 username: pName, 
@@ -347,7 +346,6 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // INSTANT ONLINE TRACKING HEARTBEAT
     async function updateOnlineStatus() {
         if (!pName || !playerId) return;
         try { 
@@ -402,12 +400,11 @@
             updateUI(); updateClock();
         }, 100);
         
-        // Polling Intervals
         setInterval(fetchChat, 5000); 
         setInterval(loadLeaderboard, 15000); 
         setInterval(loadEventLeaderboard, 15000); 
-        setInterval(fetchOnlineCount, 5000); // Faster check for online players
-        setInterval(updateOnlineStatus, 10000); // Send heartbeat every 10s
+        setInterval(fetchOnlineCount, 5000); 
+        setInterval(updateOnlineStatus, 10000); 
         
         loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
     };
@@ -484,7 +481,7 @@
         if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); clearUnread(); } 
     };
 
-    // WORLD RANKINGS - Sorted by Ascension first, then Level
+    // UPDATED: WORLD RANKINGS - Tracks Level and Ascensions (Primary Sort: Ascensions, Secondary: Level)
     window.loadLeaderboard = async function() { 
         try { 
             const { data } = await supabaseClient.from('leaderboard')
@@ -507,10 +504,9 @@
         } catch(e) {}
     };
 
-    // INSTANT PLAYERS ONLINE CALCULATION
     window.fetchOnlineCount = async function() { 
         try { 
-            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
+            const t = new Date(Date.now() - 60000).toISOString(); 
             const { count } = await supabaseClient.from('leaderboard')
                 .select('*', { count: 'exact', head: true })
                 .gt('last_seen', t); 
