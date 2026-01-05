@@ -218,6 +218,7 @@
     let playerLvl = 1, playerXP = 0, lastUpdate = Date.now(), autoSaveCounter = 0;
     let joinedEvent = false, eventSpores = 0, savedEventWeekId = 0;
     let lastChatId = null, unreadCount = 0, lastClickTime = 0, clickIntervals = [], lastSporesAmount = 0, lastSaveTimestamp = Date.now();
+    let lastSeenChatId = localStorage.getItem('lastSeenChatId') || 0;
 
     const upgrades = {
         u1: { name: "Spore Collector", base: 15, rate: 1, qty: 0, growth: 1.15 },
@@ -323,6 +324,12 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
+    // Fix for online updating: update last_seen timestamp regularly
+    async function updateOnlineStatus() {
+        if (!pName || !playerId) return;
+        try { await supabaseClient.from('leaderboard').update({ last_seen: new Date().toISOString() }).eq('player_id', playerId); } catch(e) {}
+    }
+
     window.initGame = async function() {
         playerId = localStorage.getItem("shroom_player_id") || ('id-' + Math.random().toString(36).substr(2, 16));
         localStorage.setItem("shroom_player_id", playerId);
@@ -369,8 +376,8 @@
             if (sps > 0) addXP(sps * dt * 0.1); autoSaveCounter += dt; if (autoSaveCounter >= 30) { saveGame(false); autoSaveCounter = 0; }
             updateUI(); updateClock();
         }, 100);
-        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000);
-        loadLeaderboard(); loadEventLeaderboard();
+        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000); setInterval(updateOnlineStatus, 10000);
+        loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
     };
 
     function updateUI() {
@@ -406,27 +413,69 @@
     };
     window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; };
     window.updateClock = function() { document.getElementById('liveClock').textContent = new Date().toLocaleString(); };
-    window.clearUnread = function() { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; };
+    
+    // Updated unread system
+    window.clearUnread = function() { 
+        unreadCount = 0; 
+        document.getElementById('mailNotif').style.display = 'none'; 
+        if (lastChatId) {
+            lastSeenChatId = lastChatId;
+            localStorage.setItem('lastSeenChatId', lastSeenChatId);
+        }
+    };
+
     window.fetchChat = async function() { 
         try { 
-            const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(10); 
-            if (data) { document.getElementById('chatContainer').innerHTML = data.reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); }
+            const { data } = await supabaseClient.from('chat').select('*').order('created_at', { ascending: false }).limit(20); 
+            if (data && data.length > 0) { 
+                const newestId = data[0].id;
+                if (lastChatId && newestId !== lastChatId && newestId > lastSeenChatId) {
+                    // Logic to count how many messages are newer than the one last seen
+                    let newMsgs = data.filter(m => m.id > lastSeenChatId).length;
+                    if (newMsgs > 0) {
+                        unreadCount = newMsgs;
+                        document.getElementById('unreadCount').textContent = unreadCount;
+                        document.getElementById('mailNotif').style.display = 'block';
+                    }
+                }
+                lastChatId = newestId;
+                document.getElementById('chatContainer').innerHTML = data.slice().reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); 
+            }
         } catch(e) {} 
     };
-    window.sendChatMessage = async function() { const input = document.getElementById('chatInput'); let msg = input.value.trim(); if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); } };
+
+    window.sendChatMessage = async function() { 
+        const input = document.getElementById('chatInput'); 
+        let msg = input.value.trim(); 
+        if (msg && pName) { 
+            await supabaseClient.from('chat').insert({ username: pName, message: msg }); 
+            input.value = ""; 
+            fetchChat(); 
+            clearUnread(); // Assume if you sent a message, you've read the chat
+        } 
+    };
+
     window.loadLeaderboard = async function() { 
         try { 
             const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
             if (data) { document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">${p.level}</span><span style="color:var(--neon)">${p.ascensions}</span></div>`).join(''); } 
         } catch(e) {} 
     };
+
     window.loadEventLeaderboard = async function() {
         try {
             const { data } = await supabaseClient.from('weekly_leaderboard').select('*').eq('week_id', getCurrentWeekId()).order('spores', { ascending: false }).limit(5);
             if (data) { document.getElementById('eventLeaderboardList').innerHTML = data.length ? data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--gold)">${format(p.spores)}</span></div>`).join('') : "No participants yet."; }
         } catch(e) {}
     };
-    window.fetchOnlineCount = async function() { try { const t = new Date(Date.now() - 60000).toISOString(); const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); if (count) document.getElementById('onlineNum').textContent = count; } catch(e) {} };
+
+    window.fetchOnlineCount = async function() { 
+        try { 
+            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
+            const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); 
+            document.getElementById('onlineNum').textContent = count || 1; 
+        } catch(e) {} 
+    };
     
     window.restorePurchases = async function() { 
         try { 
@@ -446,25 +495,8 @@
 
     window.hardReset = function() { 
         if(confirm("FULL RESET? This will clear Spores, Upgrades, and Progress, but KEEP your Name and Multipliers.")) { 
-            // Reset Progress Variables
-            spores = 0;
-            mushrooms = 0;
-            ascensionTimes = 0;
-            playerLvl = 1;
-            playerXP = 0;
-            frenzyTimer = 0;
-            frenzyCooldown = 0;
-            isFrenzyActive = false;
-            frenzyClicks = 0;
-            eventSpores = 0;
-            lastSporesAmount = 0;
-            
-            // Reset Upgrades
-            for (let k in upgrades) {
-                upgrades[k].qty = 0;
-            }
-
-            // Manually trigger a save with the kept data (Name, ID, and Boosts) before reloading
+            spores = 0; mushrooms = 0; ascensionTimes = 0; playerLvl = 1; playerXP = 0; frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false; frenzyClicks = 0; eventSpores = 0; lastSporesAmount = 0;
+            for (let k in upgrades) { upgrades[k].qty = 0; }
             const saveTime = Date.now();
             const d = { 
                 spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
@@ -473,7 +505,6 @@
             };
             d.h = generateHash(d);
             localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
-            
             location.reload(); 
         } 
     };
