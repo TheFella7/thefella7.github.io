@@ -444,7 +444,40 @@
         } 
     };
 
-    window.hardReset = function() { if(confirm("FULL RESET?")) { localStorage.clear(); location.reload(); } };
+    window.hardReset = function() { 
+        if(confirm("FULL RESET? This will clear Spores, Upgrades, and Progress, but KEEP your Name and Multipliers.")) { 
+            // Reset Progress Variables
+            spores = 0;
+            mushrooms = 0;
+            ascensionTimes = 0;
+            playerLvl = 1;
+            playerXP = 0;
+            frenzyTimer = 0;
+            frenzyCooldown = 0;
+            isFrenzyActive = false;
+            frenzyClicks = 0;
+            eventSpores = 0;
+            lastSporesAmount = 0;
+            
+            // Reset Upgrades
+            for (let k in upgrades) {
+                upgrades[k].qty = 0;
+            }
+
+            // Manually trigger a save with the kept data (Name, ID, and Boosts) before reloading
+            const saveTime = Date.now();
+            const d = { 
+                spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
+                frenzyCooldown, playerId, lastTime: saveTime, eventBoost, joinedEvent, eventSpores, savedEventWeekId,
+                upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
+            };
+            d.h = generateHash(d);
+            localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
+            
+            location.reload(); 
+        } 
+    };
+
     if(window.paypal) {
         paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { currency_code: "GBP", value: "1.69" } }] }), onApprove: (d, a) => a.order.capture().then(o => { if (o.status === "COMPLETED") { premiumBoostAdd += 20; saveGame(true); } }) }).render('#paypal-button-container');
     }
