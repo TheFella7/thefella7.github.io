@@ -208,7 +208,7 @@
 
 <script>
 (function() {
-    const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
+    const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHsjkxdtnerntjbqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
     let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, playerId = "";
@@ -303,7 +303,7 @@
         updateUI(); saveGame(true);
     };
 
-    // SAVING LOGIC - Unified update of world rank stats
+    // SAVING LOGIC - Now forces a ranking update on every save
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -318,10 +318,11 @@
         d.h = generateHash(d);
         localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
+        
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
         
+        // Push every player update to World Rankings immediately
         try { 
-            // Update World Rankings (Leaderboard) with current stats
             await supabaseClient.from('leaderboard').upsert({ 
                 player_id: playerId, 
                 username: pName, 
@@ -347,13 +348,10 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // INSTANT ONLINE TRACKING HEARTBEAT
     async function updateOnlineStatus() {
         if (!pName || !playerId) return;
         try { 
-            await supabaseClient.from('leaderboard')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('player_id', playerId); 
+            await supabaseClient.from('leaderboard').update({ last_seen: new Date().toISOString() }).eq('player_id', playerId); 
         } catch(e) {}
     }
 
@@ -402,12 +400,11 @@
             updateUI(); updateClock();
         }, 100);
         
-        // Polling Intervals
         setInterval(fetchChat, 5000); 
         setInterval(loadLeaderboard, 15000); 
         setInterval(loadEventLeaderboard, 15000); 
-        setInterval(fetchOnlineCount, 5000); // Faster check for online players
-        setInterval(updateOnlineStatus, 10000); // Send heartbeat every 10s
+        setInterval(fetchOnlineCount, 5000);
+        setInterval(updateOnlineStatus, 10000);
         
         loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
     };
@@ -416,18 +413,16 @@
         const getEl = (id) => document.getElementById(id);
         getEl('spores').textContent = format(spores); getEl('rate').textContent = format(getSPS()); getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
         getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes)); getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
-        
         getEl('lvlUI').textContent = playerLvl; 
-        let nX = getNextXP(); 
-        let p = Math.floor((playerXP / nX) * 100); 
+        let nX = getNextXP(), p = Math.floor((playerXP / nX) * 100); 
         p = Math.max(0, Math.min(100, p));
-        getEl('xpFill').style.width = p + "%";
-        getEl('xpPct').textContent = p;
+        getEl('xpFill').style.width = p + "%"; getEl('xpPct').textContent = p;
 
         const fS = getEl('frenzyStatus'), fF = getEl('frenzyFill');
         if (isFrenzyActive) { fS.textContent = "FRENZY (" + Math.ceil(frenzyTimer) + "s)"; fF.style.width = (frenzyTimer/15*100) + "%"; }
         else if (frenzyCooldown > 0) { fS.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; fF.style.width = (100 - (frenzyCooldown/600*100)) + "%"; }
         else { fS.textContent = `READY: ${frenzyClicks}/50 CLICKS`; fF.style.width = (frenzyClicks/50*100) + "%"; }
+        
         for (let k in upgrades) {
             let u = upgrades[k], c = u.base * Math.pow(u.growth, u.qty), btn = getEl('btn-'+k);
             btn.innerHTML = `${u.name} (${Math.floor(u.qty)})<br><span class="btn-cost">${format(c)}</span>`; btn.disabled = spores < c;
@@ -452,12 +447,7 @@
     };
     window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; };
     window.updateClock = function() { document.getElementById('liveClock').textContent = new Date().toLocaleString(); };
-    
-    window.clearUnread = function() { 
-        unreadCount = 0; 
-        document.getElementById('mailNotif').style.display = 'none'; 
-        if (lastChatId) { lastSeenChatId = lastChatId; localStorage.setItem('lastSeenChatId', lastSeenChatId); }
-    };
+    window.clearUnread = function() { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; if (lastChatId) { lastSeenChatId = lastChatId; localStorage.setItem('lastSeenChatId', lastSeenChatId); } };
 
     window.fetchChat = async function() { 
         try { 
@@ -466,11 +456,7 @@
                 const newestId = data[0].id;
                 if (lastChatId && newestId !== lastChatId && newestId > lastSeenChatId) {
                     let newMsgs = data.filter(m => m.id > lastSeenChatId).length;
-                    if (newMsgs > 0) {
-                        unreadCount = newMsgs;
-                        document.getElementById('unreadCount').textContent = unreadCount;
-                        document.getElementById('mailNotif').style.display = 'block';
-                    }
+                    if (newMsgs > 0) { unreadCount = newMsgs; document.getElementById('unreadCount').textContent = unreadCount; document.getElementById('mailNotif').style.display = 'block'; }
                 }
                 lastChatId = newestId;
                 document.getElementById('chatContainer').innerHTML = data.slice().reverse().map(m => `<div><b style="color:var(--cyan)">${m.username}:</b> ${m.message}</div>`).join(''); 
@@ -484,19 +470,10 @@
         if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); clearUnread(); } 
     };
 
-    // WORLD RANKINGS - Sorted by Ascension first, then Level
     window.loadLeaderboard = async function() { 
         try { 
-            const { data } = await supabaseClient.from('leaderboard')
-                .select('username, level, ascensions')
-                .order('ascensions', { ascending: false })
-                .order('level', { ascending: false })
-                .limit(10); 
-            if (data) { 
-                document.getElementById('leaderboardList').innerHTML = data.map((p, i) => 
-                    `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">${p.level}</span><span style="color:var(--neon)">${p.ascensions}</span></div>`
-                ).join(''); 
-            } 
+            const { data } = await supabaseClient.from('leaderboard').select('username, level, ascensions').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
+            if (data) { document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">${p.level}</span><span style="color:var(--neon)">${p.ascensions}</span></div>`).join(''); } 
         } catch(e) {} 
     };
 
@@ -507,13 +484,10 @@
         } catch(e) {}
     };
 
-    // INSTANT PLAYERS ONLINE CALCULATION
     window.fetchOnlineCount = async function() { 
         try { 
-            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
-            const { count } = await supabaseClient.from('leaderboard')
-                .select('*', { count: 'exact', head: true })
-                .gt('last_seen', t); 
+            const t = new Date(Date.now() - 60000).toISOString();
+            const { count } = await supabaseClient.from('leaderboard').select('*', { count: 'exact', head: true }).gt('last_seen', t); 
             document.getElementById('onlineNum').textContent = count || 1; 
         } catch(e) {} 
     };
@@ -526,11 +500,16 @@
     };
 
     window.hardReset = function() { 
-        if(confirm("FULL RESET? This will clear Spores, Upgrades, and Progress, but KEEP your Name and Multipliers.")) { 
-            spores = 0; mushrooms = 0; ascensionTimes = 0; playerLvl = 1; playerXP = 0; frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false; frenzyClicks = 0; eventSpores = 0; lastSporesAmount = 0;
+        if(confirm("FULL RESET? This clears Spores, Mushrooms, and Upgrades. You KEEP your Name, Player ID, and all Multipliers.")) { 
+            // Reset Progress Variables
+            spores = 0; mushrooms = 0; ascensionTimes = 0; playerLvl = 1; playerXP = 0; 
+            frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false; frenzyClicks = 0; 
+            eventSpores = 0; lastSporesAmount = 0;
             for (let k in upgrades) { upgrades[k].qty = 0; }
-            localStorage.removeItem("shroom_save_v4_sec");
-            location.reload(); 
+            
+            // Re-save with existing metadata to ensure ID and Name are preserved in LocalStorage
+            saveGame(true);
+            setTimeout(() => { location.reload(); }, 500);
         } 
     };
 
@@ -541,4 +520,3 @@
 </script>
 </body>
 </html>
-
