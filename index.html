@@ -177,7 +177,7 @@
     <div class="card">
         <h3>⚡ Premium Boosts</h3>
         <div id="paypal-button-container"></div>
-        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier (£1.69)</p>
+        <p style="font-size:0.75em; margin-top:10px; color: #ff69b4; text-align: center;">x20 Permanent Multiplier £1.69</p>
         <button class="restore-btn" onclick="restorePurchases()">Restore Multipliers</button>
     </div>
 
@@ -209,7 +209,7 @@
 
 <script>
 (function() {
-    const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHNqa3hkdG5lcm50amJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
+    const SB_URL = "https://bumylhsjkxdtnerntjbq.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXlsaHsjkxdtnerntjbqiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTI1NjQsImV4cCI6MjA4MTYyODU2NH0.E--B7G7U9GJyQJTcPde1sZeljA-Th-siCEPfmLKe3j4";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
     let spores = 0, mushrooms = 0, ascensionTimes = 0, pName = "", premiumBoostAdd = 0, playerId = "";
@@ -257,6 +257,35 @@
     function getNextXP() { return Math.floor(100 * Math.pow(1.5, Math.max(0, playerLvl - 1))); }
     function getTotalMult() { return (1 + (premiumBoostAdd || 0) + (eventBoost || 0) + (ascensionTimes * 1.0)) * (isFrenzyActive ? 5 : 1); }
     function getSPS() { let s = 0; for (let k in upgrades) s += (upgrades[k].qty * upgrades[k].rate); return s * getTotalMult(); }
+
+    // --- ENHANCED ONLINE TRACKING ---
+    async function updateOnlineStatus() {
+        if (!pName || !playerId) return;
+        try { 
+            await supabaseClient.from('leaderboard')
+                .upsert({ 
+                    player_id: playerId, 
+                    username: pName,
+                    last_seen: new Date().toISOString(),
+                    level: playerLvl,
+                    spores: Math.floor(spores)
+                }, { onConflict: 'player_id' }); 
+        } catch(e) {}
+    }
+
+    window.fetchOnlineCount = async function() { 
+        try { 
+            const activeThreshold = new Date(Date.now() - 180000).toISOString(); 
+            const { count, error } = await supabaseClient
+                .from('leaderboard')
+                .select('player_id', { count: 'exact', head: true })
+                .gt('last_seen', activeThreshold); 
+            
+            if (!error) {
+                document.getElementById('onlineNum').textContent = Math.max(1, count || 1); 
+            }
+        } catch(e) {} 
+    };
 
     window.clickMushroom = function(e) {
         const now = Date.now(); if (now - lastClickTime < 40) return; lastClickTime = now;
@@ -324,36 +353,13 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // FIXED: Reliable Heartbeat system that pings Supabase every 30 seconds
-    async function updateOnlineStatus() {
-        if (!pName || !playerId) return;
-        try { 
-            await supabaseClient.from('leaderboard')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('player_id', playerId); 
-        } catch(e) {}
-    }
-
-    // FIXED: Optimized query to count players seen in the last 2 minutes
-    window.fetchOnlineCount = async function() { 
-        try { 
-            const twoMinutesAgo = new Date(Date.now() - 120000).toISOString(); 
-            const { count, error } = await supabaseClient
-                .from('leaderboard')
-                .select('player_id', { count: 'exact', head: true })
-                .gt('last_seen', twoMinutesAgo); 
-            
-            if (!error) {
-                document.getElementById('onlineNum').textContent = count || 1; 
-            }
-        } catch(e) {} 
-    };
-
     window.initGame = async function() {
         playerId = localStorage.getItem("shroom_player_id") || ('id-' + Math.random().toString(36).substr(2, 16));
         localStorage.setItem("shroom_player_id", playerId);
+        
         const container = document.getElementById('upgradeContainer');
         container.innerHTML = ""; for (let k in upgrades) { container.innerHTML += `<div class="btn-group"><div class="afford-tag" id="tag-${k}">+0</div><button id="btn-${k}" class="upgrade-main" onclick="buyUpgrade('${k}', false)"></button><button class="max-btn" onclick="buyUpgrade('${k}', true)">MAX</button></div>`; } 
+        
         const savedRaw = localStorage.getItem("shroom_save_v4_sec");
         if (savedRaw) {
             try {
@@ -368,25 +374,14 @@
             } catch(e) {}
         }
 
-        try { 
-            await supabaseClient.rpc('process_weekly_rewards');
-            const { data } = await supabaseClient.from('leaderboard').select('event_boost, premium_boost').eq('player_id', playerId).single();
-            if (data) {
-                if (data.event_boost > eventBoost) { 
-                    let diff = data.event_boost - eventBoost;
-                    eventBoost = data.event_boost; 
-                    document.getElementById('rewardText').textContent = "+" + diff + " Multiplier!"; 
-                    document.getElementById('rewardModal').style.display = 'flex';
-                }
-                if (data.premium_boost > premiumBoostAdd) {
-                    premiumBoostAdd = data.premium_boost;
-                }
-            }
-        } catch(e) {}
+        if(pName) {
+            document.getElementById('usernameOverlay').style.display = 'none';
+            document.getElementById('nameText').textContent = "Shroomer: " + pName;
+            updateOnlineStatus(); // Trigger immediate online ping
+        } else {
+            document.getElementById('usernameOverlay').style.display = 'flex';
+        }
 
-        lastSporesAmount = spores; document.getElementById('usernameOverlay').style.display = pName ? 'none' : 'flex';
-        if(pName) document.getElementById('nameText').textContent = "Shroomer: " + pName;
-        
         setInterval(() => {
             let now = Date.now(), dt = Math.min(2, (now - lastUpdate) / 1000); lastUpdate = now;
             if (isFrenzyActive) { frenzyTimer -= dt; if (frenzyTimer <= 0) { isFrenzyActive = false; frenzyCooldown = 600; document.getElementById('mushroomClicker').classList.remove("shroom-frenzy-active"); } } 
@@ -396,17 +391,15 @@
             updateUI(); updateClock();
         }, 100);
 
-        // Core syncing intervals
         setInterval(fetchChat, 5000); 
         setInterval(loadLeaderboard, 15000); 
         setInterval(loadEventLeaderboard, 15000); 
-        setInterval(fetchOnlineCount, 20000); // Check online status count
+        setInterval(fetchOnlineCount, 15000); // Check online total
         setInterval(updateOnlineStatus, 30000); // Heartbeat ping
         
         loadLeaderboard(); 
         loadEventLeaderboard(); 
         fetchOnlineCount();
-        updateOnlineStatus();
     };
 
     function updateUI() {
@@ -434,29 +427,22 @@
         getEl('eventScoreUI').textContent = format(eventSpores); getEl('eventTimer').textContent = getEventTimeLeft();
     }
 
-    window.closeOfflineModal = function() { document.getElementById('offlineModal').style.display = 'none'; };
-    window.closeRewardModal = function() { document.getElementById('rewardModal').style.display = 'none'; };
     window.confirmUsername = async function() { 
         let i = document.getElementById('playerNameInput').value.trim(); 
         if (i.length >= 2 && i.length <= 15) { 
             pName = i; 
             document.getElementById('usernameOverlay').style.display = 'none'; 
             document.getElementById('nameText').textContent = "Shroomer: " + pName; 
+            updateOnlineStatus(); // Instant ping when joining
             saveGame(true); 
-            updateOnlineStatus(); // Immediate ping on name confirmation
         } 
     };
-    window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; };
-    window.updateClock = function() { document.getElementById('liveClock').textContent = new Date().toLocaleString(); };
-    
-    window.clearUnread = function() { 
-        unreadCount = 0; 
-        document.getElementById('mailNotif').style.display = 'none'; 
-        if (lastChatId) {
-            lastSeenChatId = lastChatId;
-            localStorage.setItem('lastSeenChatId', lastSeenChatId);
-        }
-    };
+
+    window.closeOfflineModal = () => document.getElementById('offlineModal').style.display = 'none';
+    window.closeRewardModal = () => document.getElementById('rewardModal').style.display = 'none';
+    window.openNameChange = () => document.getElementById('usernameOverlay').style.display = 'flex';
+    window.updateClock = () => document.getElementById('liveClock').textContent = new Date().toLocaleString();
+    window.clearUnread = () => { unreadCount = 0; document.getElementById('mailNotif').style.display = 'none'; };
 
     window.fetchChat = async function() { 
         try { 
@@ -482,9 +468,7 @@
         let msg = input.value.trim(); 
         if (msg && pName) { 
             await supabaseClient.from('chat').insert({ username: pName, message: msg }); 
-            input.value = ""; 
-            fetchChat(); 
-            clearUnread();
+            input.value = ""; fetchChat(); clearUnread();
         } 
     };
 
@@ -501,35 +485,10 @@
             if (data) { document.getElementById('eventLeaderboardList').innerHTML = data.length ? data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--gold)">${format(p.spores)}</span></div>`).join('') : "No participants yet."; }
         } catch(e) {}
     };
-    
-    window.restorePurchases = async function() { 
-        try { 
-            const { data, error } = await supabaseClient.from('leaderboard').select('premium_boost').eq('player_id', playerId).single(); 
-            if (data && data.premium_boost > 0) { 
-                premiumBoostAdd = data.premium_boost; 
-                updateUI(); 
-                saveGame(false);
-                alert("Multipliers restored! Current boost: x" + premiumBoostAdd); 
-            } else {
-                alert("No multipliers found for this account.");
-            }
-        } catch(e) {
-            alert("Error syncing with server.");
-        } 
-    };
 
     window.hardReset = function() { 
-        if(confirm("FULL RESET? This will clear Spores, Upgrades, and Progress, but KEEP your Name and Multipliers.")) { 
-            spores = 0; mushrooms = 0; ascensionTimes = 0; playerLvl = 1; playerXP = 0; frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false; frenzyClicks = 0; eventSpores = 0; lastSporesAmount = 0;
-            for (let k in upgrades) { upgrades[k].qty = 0; }
-            const saveTime = Date.now();
-            const d = { 
-                spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
-                frenzyCooldown, playerId, lastTime: saveTime, eventBoost, joinedEvent, eventSpores, savedEventWeekId,
-                upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
-            };
-            d.h = generateHash(d);
-            localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
+        if(confirm("FULL RESET? Progress will clear but Multipliers stay.")) { 
+            localStorage.removeItem("shroom_save_v4_sec");
             location.reload(); 
         } 
     };
