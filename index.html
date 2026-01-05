@@ -55,7 +55,6 @@
         .hard-reset-btn { background: #220000; color: #ff6666; margin: 30px auto; display: block; border: 1px solid #440000; padding: 10px; border-radius: 8px; cursor:pointer; font-size: 0.8em; }
         .restore-btn { background: #333; color: var(--gold); border: 1px solid var(--gold); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8em; margin: 5px auto; display: block; }
         .join-event-btn { width: 100%; padding: 12px; background: linear-gradient(45deg, #ff4500, #ff8c00); border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 5px; }
-        .event-active-btn { background: #333; border: 1px solid var(--event); color: var(--event); cursor: default; }
         footer { padding: 40px 20px; opacity: 0.9; font-size: 0.8em; }
         .footer-links a { color: var(--cyan); text-decoration: none; margin: 0 8px; }
         #installBtn { background: var(--cyan); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px; font-size: 0.8em; display: none; }
@@ -324,7 +323,7 @@
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // Fix for online updating: update last_seen timestamp regularly
+    // FIX: Update last_seen timestamp regularly to track players online accurately
     async function updateOnlineStatus() {
         if (!pName || !playerId) return;
         try { await supabaseClient.from('leaderboard').update({ last_seen: new Date().toISOString() }).eq('player_id', playerId); } catch(e) {}
@@ -384,7 +383,15 @@
         const getEl = (id) => document.getElementById(id);
         getEl('spores').textContent = format(spores); getEl('rate').textContent = format(getSPS()); getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
         getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes)); getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
-        getEl('lvlUI').textContent = playerLvl; let nX = getNextXP(), p = Math.min(100, Math.floor((playerXP / nX) * 100)); getEl('xpFill').style.width = p + "%";
+        
+        // FIX: Level Up Bar Percentage Calculation
+        getEl('lvlUI').textContent = playerLvl; 
+        let nX = getNextXP(); 
+        let p = Math.floor((playerXP / nX) * 100); 
+        p = Math.max(0, Math.min(100, p));
+        getEl('xpFill').style.width = p + "%";
+        getEl('xpPct').textContent = p;
+
         const fS = getEl('frenzyStatus'), fF = getEl('frenzyFill');
         if (isFrenzyActive) { fS.textContent = "FRENZY (" + Math.ceil(frenzyTimer) + "s)"; fF.style.width = (frenzyTimer/15*100) + "%"; }
         else if (frenzyCooldown > 0) { fS.textContent = "COOLDOWN: " + Math.floor(frenzyCooldown) + "s"; fF.style.width = (100 - (frenzyCooldown/600*100)) + "%"; }
@@ -414,7 +421,6 @@
     window.openNameChange = function() { document.getElementById('usernameOverlay').style.display = 'flex'; };
     window.updateClock = function() { document.getElementById('liveClock').textContent = new Date().toLocaleString(); };
     
-    // Updated unread system
     window.clearUnread = function() { 
         unreadCount = 0; 
         document.getElementById('mailNotif').style.display = 'none'; 
@@ -430,7 +436,6 @@
             if (data && data.length > 0) { 
                 const newestId = data[0].id;
                 if (lastChatId && newestId !== lastChatId && newestId > lastSeenChatId) {
-                    // Logic to count how many messages are newer than the one last seen
                     let newMsgs = data.filter(m => m.id > lastSeenChatId).length;
                     if (newMsgs > 0) {
                         unreadCount = newMsgs;
@@ -451,14 +456,23 @@
             await supabaseClient.from('chat').insert({ username: pName, message: msg }); 
             input.value = ""; 
             fetchChat(); 
-            clearUnread(); // Assume if you sent a message, you've read the chat
+            clearUnread();
         } 
     };
 
+    // FIX: Optimized Global World Rankings (Ascensions first, then Level)
     window.loadLeaderboard = async function() { 
         try { 
-            const { data } = await supabaseClient.from('leaderboard').select('*').order('ascensions', { ascending: false }).order('level', { ascending: false }).limit(10); 
-            if (data) { document.getElementById('leaderboardList').innerHTML = data.map((p, i) => `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">${p.level}</span><span style="color:var(--neon)">${p.ascensions}</span></div>`).join(''); } 
+            const { data } = await supabaseClient.from('leaderboard')
+                .select('username, level, ascensions')
+                .order('ascensions', { ascending: false })
+                .order('level', { ascending: false })
+                .limit(10); 
+            if (data) { 
+                document.getElementById('leaderboardList').innerHTML = data.map((p, i) => 
+                    `<div class="lb-row"><span>${i+1}</span><span>${p.username}</span><span style="color:var(--xp)">${p.level}</span><span style="color:var(--neon)">${p.ascensions}</span></div>`
+                ).join(''); 
+            } 
         } catch(e) {} 
     };
 
@@ -469,9 +483,10 @@
         } catch(e) {}
     };
 
+    // FIX: Accurate Players Online count (seen within last 60 seconds)
     window.fetchOnlineCount = async function() { 
         try { 
-            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
+            const t = new Date(Date.now() - 60000).toISOString(); 
             const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); 
             document.getElementById('onlineNum').textContent = count || 1; 
         } catch(e) {} 
@@ -516,4 +531,3 @@
 </script>
 </body>
 </html>
-
