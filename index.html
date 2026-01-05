@@ -303,6 +303,7 @@
         updateUI(); saveGame(true);
     };
 
+    // SAVING LOGIC - Unified update of world rank stats
     window.saveGame = async function(indicator) {
         if (!pName) return;
         const timePassed = (Date.now() - lastSaveTimestamp) / 1000;
@@ -318,15 +319,42 @@
         localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
         lastSporesAmount = spores; lastSaveTimestamp = saveTime;
         if(document.getElementById('lastSavedTime')) document.getElementById('lastSavedTime').textContent = new Date(saveTime).toLocaleTimeString();
-        try { await supabaseClient.from('leaderboard').upsert({ player_id: playerId, username: pName, spores: Math.floor(spores), ascensions: ascensionTimes, level: playerLvl, last_seen: new Date().toISOString(), event_boost: eventBoost, premium_boost: premiumBoostAdd }, { onConflict: 'player_id' }); } catch(e) {}
-        if (joinedEvent) { try { await supabaseClient.from('weekly_leaderboard').upsert({ week_id: savedEventWeekId, player_id: playerId, username: pName, spores: Math.floor(eventSpores) }, { onConflict: 'week_id,player_id' }); } catch(e) {} }
+        
+        try { 
+            // Update World Rankings (Leaderboard) with current stats
+            await supabaseClient.from('leaderboard').upsert({ 
+                player_id: playerId, 
+                username: pName, 
+                spores: Math.floor(spores), 
+                ascensions: ascensionTimes, 
+                level: playerLvl, 
+                last_seen: new Date().toISOString(), 
+                event_boost: eventBoost, 
+                premium_boost: premiumBoostAdd 
+            }, { onConflict: 'player_id' }); 
+        } catch(e) {}
+
+        if (joinedEvent) { 
+            try { 
+                await supabaseClient.from('weekly_leaderboard').upsert({ 
+                    week_id: savedEventWeekId, 
+                    player_id: playerId, 
+                    username: pName, 
+                    spores: Math.floor(eventSpores) 
+                }, { onConflict: 'week_id,player_id' }); 
+            } catch(e) {} 
+        }
         if(indicator) { document.getElementById('saveStatus').style.opacity = "1"; setTimeout(() => { document.getElementById('saveStatus').style.opacity = "0" }, 2000); }
     };
 
-    // FIX: Update last_seen timestamp regularly to track players online accurately
+    // INSTANT ONLINE TRACKING HEARTBEAT
     async function updateOnlineStatus() {
         if (!pName || !playerId) return;
-        try { await supabaseClient.from('leaderboard').update({ last_seen: new Date().toISOString() }).eq('player_id', playerId); } catch(e) {}
+        try { 
+            await supabaseClient.from('leaderboard')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('player_id', playerId); 
+        } catch(e) {}
     }
 
     window.initGame = async function() {
@@ -358,9 +386,7 @@
                     document.getElementById('rewardText').textContent = "+" + diff + " Multiplier!"; 
                     document.getElementById('rewardModal').style.display = 'flex';
                 }
-                if (data.premium_boost > premiumBoostAdd) {
-                    premiumBoostAdd = data.premium_boost;
-                }
+                if (data.premium_boost > premiumBoostAdd) { premiumBoostAdd = data.premium_boost; }
             }
         } catch(e) {}
 
@@ -375,7 +401,14 @@
             if (sps > 0) addXP(sps * dt * 0.1); autoSaveCounter += dt; if (autoSaveCounter >= 30) { saveGame(false); autoSaveCounter = 0; }
             updateUI(); updateClock();
         }, 100);
-        setInterval(fetchChat, 5000); setInterval(loadLeaderboard, 15000); setInterval(loadEventLeaderboard, 15000); setInterval(fetchOnlineCount, 15000); setInterval(updateOnlineStatus, 10000);
+        
+        // Polling Intervals
+        setInterval(fetchChat, 5000); 
+        setInterval(loadLeaderboard, 15000); 
+        setInterval(loadEventLeaderboard, 15000); 
+        setInterval(fetchOnlineCount, 5000); // Faster check for online players
+        setInterval(updateOnlineStatus, 10000); // Send heartbeat every 10s
+        
         loadLeaderboard(); loadEventLeaderboard(); fetchOnlineCount();
     };
 
@@ -384,7 +417,6 @@
         getEl('spores').textContent = format(spores); getEl('rate').textContent = format(getSPS()); getEl('mushroomsUI').textContent = format(Math.floor(mushrooms));
         getEl('ascCountUI').textContent = format(Math.floor(ascensionTimes)); getEl('totalMultUI').textContent = "x" + getTotalMult().toFixed(2);
         
-        // FIX: Level Up Bar Percentage Calculation
         getEl('lvlUI').textContent = playerLvl; 
         let nX = getNextXP(); 
         let p = Math.floor((playerXP / nX) * 100); 
@@ -424,10 +456,7 @@
     window.clearUnread = function() { 
         unreadCount = 0; 
         document.getElementById('mailNotif').style.display = 'none'; 
-        if (lastChatId) {
-            lastSeenChatId = lastChatId;
-            localStorage.setItem('lastSeenChatId', lastSeenChatId);
-        }
+        if (lastChatId) { lastSeenChatId = lastChatId; localStorage.setItem('lastSeenChatId', lastSeenChatId); }
     };
 
     window.fetchChat = async function() { 
@@ -452,15 +481,10 @@
     window.sendChatMessage = async function() { 
         const input = document.getElementById('chatInput'); 
         let msg = input.value.trim(); 
-        if (msg && pName) { 
-            await supabaseClient.from('chat').insert({ username: pName, message: msg }); 
-            input.value = ""; 
-            fetchChat(); 
-            clearUnread();
-        } 
+        if (msg && pName) { await supabaseClient.from('chat').insert({ username: pName, message: msg }); input.value = ""; fetchChat(); clearUnread(); } 
     };
 
-    // FIX: Optimized Global World Rankings (Ascensions first, then Level)
+    // WORLD RANKINGS - Sorted by Ascension first, then Level
     window.loadLeaderboard = async function() { 
         try { 
             const { data } = await supabaseClient.from('leaderboard')
@@ -483,43 +507,29 @@
         } catch(e) {}
     };
 
-    // FIX: Accurate Players Online count (seen within last 60 seconds)
+    // INSTANT PLAYERS ONLINE CALCULATION
     window.fetchOnlineCount = async function() { 
         try { 
-            const t = new Date(Date.now() - 60000).toISOString(); 
-            const { count } = await supabaseClient.from('leaderboard').select('player_id', { count: 'exact', head: true }).gt('last_seen', t); 
+            const t = new Date(Date.now() - 60000).toISOString(); // Active in last 60 seconds
+            const { count } = await supabaseClient.from('leaderboard')
+                .select('*', { count: 'exact', head: true })
+                .gt('last_seen', t); 
             document.getElementById('onlineNum').textContent = count || 1; 
         } catch(e) {} 
     };
     
     window.restorePurchases = async function() { 
         try { 
-            const { data, error } = await supabaseClient.from('leaderboard').select('premium_boost').eq('player_id', playerId).single(); 
-            if (data && data.premium_boost > 0) { 
-                premiumBoostAdd = data.premium_boost; 
-                updateUI(); 
-                saveGame(false);
-                alert("Multipliers restored! Current boost: x" + premiumBoostAdd); 
-            } else {
-                alert("No multipliers found for this account.");
-            }
-        } catch(e) {
-            alert("Error syncing with server.");
-        } 
+            const { data } = await supabaseClient.from('leaderboard').select('premium_boost').eq('player_id', playerId).single(); 
+            if (data && data.premium_boost > 0) { premiumBoostAdd = data.premium_boost; updateUI(); saveGame(false); alert("Multipliers restored!"); } else { alert("No multipliers found."); }
+        } catch(e) { alert("Error syncing."); } 
     };
 
     window.hardReset = function() { 
         if(confirm("FULL RESET? This will clear Spores, Upgrades, and Progress, but KEEP your Name and Multipliers.")) { 
             spores = 0; mushrooms = 0; ascensionTimes = 0; playerLvl = 1; playerXP = 0; frenzyTimer = 0; frenzyCooldown = 0; isFrenzyActive = false; frenzyClicks = 0; eventSpores = 0; lastSporesAmount = 0;
             for (let k in upgrades) { upgrades[k].qty = 0; }
-            const saveTime = Date.now();
-            const d = { 
-                spores, mushrooms, ascensionTimes, pName, premiumBoostAdd, playerLvl, playerXP, 
-                frenzyCooldown, playerId, lastTime: saveTime, eventBoost, joinedEvent, eventSpores, savedEventWeekId,
-                upgradeQtys: Object.keys(upgrades).reduce((a, k) => ({...a, [k]: upgrades[k].qty}), {}) 
-            };
-            d.h = generateHash(d);
-            localStorage.setItem("shroom_save_v4_sec", btoa(JSON.stringify(d)));
+            localStorage.removeItem("shroom_save_v4_sec");
             location.reload(); 
         } 
     };
